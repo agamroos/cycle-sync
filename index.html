@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="Cycle Sync"/>
+  <title>Cycle Sync</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='24' r='18' fill='none' stroke='%237a5090' stroke-width='5'/%3E%3Cline x1='32' y1='42' x2='32' y2='56' stroke='%237a5090' stroke-width='5' stroke-linecap='round'/%3E%3Cline x1='22' y1='50' x2='42' y2='50' stroke='%237a5090' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E"/>
+
+
+  <!-- ── PWA ── -->
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <meta name="theme-color" content="#9060c0"/>
+  <script>
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('./sw.js')
+          .then(function(){ console.log('[SW] zarejestrowany'); })
+          .catch(function(e){ console.warn('[SW] błąd:', e); });
+      });
+    }
+  </script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+    @keyframes breathe{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes scaleIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes splPulse{0%,100%{opacity:0.7;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+
+    body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f8f5f0;color:#1a1410;font-size:18px}
+    #app{max-width:390px;margin:0 auto;position:relative}
+    #screen-today{display:none;flex-direction:column}
+    #screen-today.active{display:flex}
+
+    /* ── SPLASH ── */
+    #splash{position:fixed;inset:0;background:#f8f5f0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.7s ease}
+    #splash.hide{opacity:0;pointer-events:none}
+    .spl-sym{font-size:3rem;margin-bottom:14px;opacity:0.7;animation:splPulse 2s ease-in-out infinite}
+    .spl-title{font-family:'DM Serif Display',serif;font-size:1.7rem;letter-spacing:0.02em;margin-bottom:3px}
+    .spl-sub{font-size:0.65rem;letter-spacing:0.3em;text-transform:uppercase;color:#a09080;margin-bottom:26px}
+    .spl-dots{display:flex;gap:7px}
+    .spl-dot{width:8px;height:8px;border-radius:50%}
+
+    /* ── SCREENS ── */
+    .screen{display:none;flex-direction:column}
+    .screen.active{display:flex}
+
+    /* ── ONBOARDING SCREEN ── */
+    #screen-onboard{background:#f8f5f0;align-items:center;justify-content:center;padding:40px 30px;text-align:center}
+    .ob-hero-strip{width:100%;height:4px;border-radius:99px;margin-bottom:36px;background:linear-gradient(90deg,#c06070 0%,#60b050 30%,#e8b020 60%,#9060c0 100%)}
+    .ob-ico{font-size:4rem;margin-bottom:20px;animation:splPulse 3s ease-in-out infinite}
+    .ob-title{font-family:'DM Serif Display',serif;font-size:2rem;margin-bottom:8px;line-height:1.2;width:100%;max-width:300px;text-align:left}
+    .ob-sub{font-size:0.9rem;color:#8a7a6a;line-height:1.7;margin-bottom:40px;font-weight:300;max-width:300px;text-align:left}
+    .ob-phases{display:flex;gap:10px;justify-content:center;margin-bottom:36px}
+    .ob-phase{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+    .ob-phase-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+    .ob-phase-lbl{font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:#a09080;text-align:center;line-height:1.3}
+    .ob-form{width:100%;max-width:300px}
+    .ob-form-lbl{font-size:0.6rem;letter-spacing:0.24em;text-transform:uppercase;color:#a09080;margin-bottom:10px;display:block}
+    .ob-date-input{width:100%;font-family:'DM Sans',sans-serif;font-size:1rem;color:#1a1410;background:#fff;border:1.5px solid #d8cfc4;border-radius:14px;padding:12px 18px;outline:none;text-align:center;transition:border-color 0.2s}
+    .ob-date-input:focus{border-color:#9060c0}
+    .ob-btn{width:100%;margin-top:14px;padding:14px;border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;color:#fff;cursor:pointer;letter-spacing:0.04em;background:linear-gradient(135deg,#9060c0,#7040a0);transition:opacity 0.2s}
+    .ob-btn:hover{opacity:0.9}
+
+    /* ── TODAY SCREEN ── */
+    #screen-today{background:#f8f5f0}
+
+    /* gradient hero */
+    .hero-bg{
+      background-size:300% 300%;
+      animation:breathe 8s ease infinite;
+      transition:background 1.4s ease;
+      padding-bottom:44px;
+    }
+    .hdr{padding:18px 22px 14px;display:flex;align-items:center;justify-content:space-between}
+    .hdr-brand{font-size:0.58rem;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.55)}
+    .hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+    .hdr-lbl{font-size:0.55rem;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.4)}
+    input[type=date]{font-family:'DM Sans',sans-serif;font-size:0.8rem;color:rgba(255,255,255,0.82);background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.25);padding:2px 0;outline:none;text-align:right}
+    input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:0.4}
+
+    .hero-content{padding:10px 22px 20px;display:flex;align-items:center;gap:20px}
+    .hero-ico{font-size:4.5rem;line-height:1;filter:drop-shadow(0 4px 20px rgba(0,0,0,0.2));animation:scaleIn 0.5s cubic-bezier(0.34,1.4,0.64,1) both;flex-shrink:0}
+    .hero-text{display:flex;flex-direction:column;gap:4px}
+    .hero-eyebrow{font-size:0.58rem;letter-spacing:0.24em;text-transform:uppercase;color:rgba(255,255,255,0.5)}
+    .hero-name{font-family:'DM Serif Display',serif;font-size:1.9rem;line-height:1.1;color:#fff;animation:fadeUp 0.35s 0.05s ease both}
+    .hero-archetype{font-family:'DM Serif Display',serif;font-style:italic;font-size:0.88rem;color:rgba(255,255,255,0.6);animation:fadeUp 0.35s 0.08s ease both}
+    .hero-range{font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.5);animation:fadeUp 0.35s 0.1s ease both}
+    .hero-tip{font-family:'DM Serif Display',serif;font-style:italic;font-size:0.9rem;color:rgba(255,255,255,0.75);line-height:1.6;margin-top:6px;animation:fadeUp 0.35s 0.12s ease both}
+
+    /* floating card */
+    .float-card{margin:0 18px;margin-top:-36px;background:#fff;border-radius:20px;padding:18px 20px;box-shadow:0 8px 40px rgba(0,0,0,0.12),0 2px 8px rgba(0,0,0,0.06);position:relative;z-index:10;animation:slideUp 0.45s 0.08s cubic-bezier(0.34,1.2,0.64,1) both}
+    .fc-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+    .fc-day{display:flex;flex-direction:column;gap:2px}
+    .fc-day-num{font-family:'DM Serif Display',serif;font-size:3.6rem;line-height:1}
+    .fc-day-lbl{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:#a09080}
+    .fc-right{display:flex;gap:20px;align-items:flex-end;padding-bottom:4px}
+    .fc-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+    .fc-stat-num{font-family:'DM Serif Display',serif;font-size:1.8rem;line-height:1}
+    .fc-stat-lbl{font-size:0.55rem;letter-spacing:0.14em;text-transform:uppercase;color:#a09080}
+
+    .fc-strip{display:flex;gap:2.5px;margin-bottom:12px}
+    .fc-dot{flex:1;height:5px;border-radius:99px;background:#f0ebe3;transition:background 0.4s}
+
+    .fc-prog-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+    .fc-prog-lbl{font-size:0.66rem;color:#a09080}
+    .fc-prog-val{font-size:0.7rem;font-weight:600}
+    .fc-track{height:4px;background:#f0ebe3;border-radius:99px;overflow:hidden;margin-bottom:14px}
+    .fc-fill{height:100%;border-radius:99px;transition:width 0.9s ease}
+    .fc-divider{height:1px;background:#f0ebe3;margin-bottom:12px}
+    .fc-next{display:flex;align-items:center;justify-content:space-between}
+    .fc-next-lbl{font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;color:#a09080;margin-bottom:2px}
+    .fc-next-name{font-size:1rem;font-weight:500}
+    .fc-next-date{font-size:0.8rem;color:#a09080}
+    .fc-next-date strong{color:#3a3020;font-size:1rem}
+
+    /* content below card */
+    .today-content{padding:0 18px 90px;margin-top:14px}
+    .section{margin-bottom:10px}
+    .sec-lbl{font-size:0.58rem;letter-spacing:0.22em;text-transform:uppercase;color:#a09080;margin-bottom:8px}
+    .card{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 1px 8px rgba(0,0,0,0.05)}
+
+    .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .stat-card{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,0.04)}
+    .stat-lbl{font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:#a09080;margin-bottom:4px}
+    .stat-val{font-size:0.9rem;font-weight:500}
+
+    .hb{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .hb:last-child{margin-bottom:0}
+    .hb-name{font-size:0.74rem;color:#5a5040;width:82px;flex-shrink:0}
+    .hb-track{flex:1;height:4px;background:#f0ebe3;border-radius:99px;overflow:hidden}
+    .hb-fill{height:100%;border-radius:99px;transition:width 1s ease}
+    .hb-pct{font-size:0.62rem;color:#a09080;width:28px;text-align:right;flex-shrink:0}
+
+    .mg-card{background:#fff;border-radius:14px;padding:12px 15px;box-shadow:0 1px 6px rgba(0,0,0,0.04)}
+    .mg-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+    .mg-info{display:flex;align-items:center;gap:9px}
+    .mg-ico{font-size:1rem}
+    .mg-kk{font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;color:#a09080;margin-bottom:1px}
+    .mg-val{font-size:0.88rem;font-weight:500;color:#7a5090}
+    .mg-sub-txt{font-size:0.7rem;color:#a09080;font-style:italic;margin-bottom:8px}
+    .mg-tiles{display:flex;gap:4px;flex-wrap:wrap}
+    .mg-tile{width:46px;height:46px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.62rem;font-weight:500;cursor:pointer;border:1.5px solid transparent;transition:transform 0.12s;line-height:1.2;user-select:none}
+    .mg-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+    .mg-tile:hover{transform:scale(1.1)}
+    .mg-tile-off{background:#f0ebe3;color:#c0b0a0;cursor:default}
+    .mg-tile-off:hover{transform:none}
+
+    .ls-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;background:#fff;border-radius:14px;padding:13px 16px;box-shadow:0 1px 6px rgba(0,0,0,0.04)}
+    .ls-lbl{font-size:0.54rem;letter-spacing:0.2em;text-transform:uppercase;color:#a09080}
+    .ls-arr{font-size:0.7rem;color:#c8b898;transition:transform 0.3s}
+    .ls-arr.open{transform:rotate(180deg)}
+    .ls-panel{overflow:hidden;max-height:0;transition:max-height 0.4s ease}
+    .ls-panel.open{max-height:250px}
+    .ls-inner{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px 0 0}
+    .ls-c{background:#fff;border-radius:12px;padding:11px 10px;box-shadow:0 1px 6px rgba(0,0,0,0.04);border-top:2.5px solid #eee}
+    .ls-ico{font-size:0.9rem;margin-bottom:4px}
+    .ls-clbl{font-size:0.5rem;letter-spacing:0.14em;text-transform:uppercase;color:#a09080;margin-bottom:3px}
+    .ls-val{font-size:0.6rem;color:#6a5e4a;line-height:1.4}
+
+    /* ── EAT SCREEN ── */
+    #screen-eat{background:#f8f5f0;padding-bottom:0}
+    .eat-hdr{padding:10px 22px 10px;display:flex;align-items:center;justify-content:space-between}
+    .screen-title{font-family:'DM Serif Display',serif;font-size:1.5rem}
+    .sub-tabs{display:flex;flex-wrap:nowrap;gap:5px;padding:0 18px 0;overflow-x:auto;scrollbar-width:none}
+    .sub-tabs::-webkit-scrollbar{display:none}
+    .stab{padding:7px 11px;border-radius:20px;border:1.5px solid #d8cfc4;background:#fff;color:#8a7a6a;font-size:0.78rem;font-family:'DM Sans',sans-serif;white-space:nowrap;cursor:pointer;transition:all 0.18s}
+    .stab.active{color:#fff;border-color:transparent}
+    .eat-body{padding:8px 18px 90px;overflow-y:auto;flex:1}
+    .group-block{background:#fff;border-radius:14px;padding:13px 14px;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,0.05)}
+    .group-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .group-hd-ico{font-size:1.3rem;line-height:1}
+    .group-hd-txt{font-family:'DM Serif Display',serif;font-size:0.9rem;color:#3a3020}
+    .tag-row{display:flex;flex-wrap:wrap;gap:5px}
+    .tag{padding:4px 10px;border-radius:20px;font-size:0.67rem;font-weight:500;line-height:1.4}
+    .chip-grid{display:flex;flex-wrap:wrap;gap:10px}
+    .chip{border-radius:14px;padding:10px 16px;border:1.5px solid rgba(0,0,0,0.08);font-size:0.85rem;line-height:1.4;color:#1a1410;font-weight:500}
+    .avoid-chip{background:#fff;color:#5a4e3a;border-color:#d8cfc4}
+    .meal-card{background:#fff;border-radius:15px;padding:14px 15px;box-shadow:0 1px 8px rgba(0,0,0,0.05);border-top:3px solid;margin-bottom:10px}
+    .meal-hdr{display:flex;align-items:center;gap:11px;margin-bottom:7px}
+    .meal-ico-el{font-size:1.5rem}
+    .meal-meta{flex:1}
+    .meal-type{font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:2px}
+    .meal-name{font-family:'DM Serif Display',serif;font-size:0.95rem;line-height:1.3}
+    .meal-kcal{font-size:0.62rem;font-weight:500;padding:3px 9px;border-radius:99px;white-space:nowrap}
+    .meal-desc{font-size:0.7rem;color:#8a7a6a;line-height:1.55}
+    .kcal-total{margin-top:10px;padding:9px 14px;border-radius:12px;font-size:0.7rem;font-style:italic;text-align:center}
+    .mg-info-card{background:#fff;border-radius:12px;padding:13px 15px;border-left:3px solid #7a5090;margin-bottom:10px;font-size:0.82rem;line-height:1.65;color:#8a7a6a;box-shadow:0 1px 6px rgba(0,0,0,0.04)}
+    .mg-info-title{display:block;font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:5px;color:#7a5090}
+
+    /* ── TIPS SCREEN ── */
+    #screen-tips{background:#f8f5f0}
+    .tips-hdr{padding:18px 22px 14px}
+    .tips-body{padding:0 18px 90px;overflow-y:auto;flex:1}
+    .tip-block{background:#fff;border-radius:12px;padding:13px 15px;border-left:3px solid;margin-bottom:10px;font-size:0.82rem;line-height:1.65;color:#8a7a6a;box-shadow:0 1px 6px rgba(0,0,0,0.04)}
+    .tip-block-title{display:block;font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:5px}
+
+    /* ── FAZA SCREEN ── */
+    #screen-phase{background:#f8f5f0}
+    .phase-hdr-bg{padding-bottom:36px;transition:background 1.4s ease}
+    .phase-hdr-inner{padding:10px 22px 0;display:flex;align-items:center;justify-content:space-between}
+    .phase-hdr-title{font-family:'DM Serif Display',serif;font-size:1.5rem;color:#fff}
+    .phase-float{margin:0 18px;margin-top:-20px;background:#fff;border-radius:20px;padding:0 20px 18px;box-shadow:0 8px 40px rgba(0,0,0,0.12);position:relative;z-index:10;margin-bottom:14px;overflow:visible;text-align:center}
+    .ph-ico-wrap{display:flex;justify-content:center;margin-top:-36px;margin-bottom:10px}
+    .ph-ico{font-size:4rem;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.18))}
+    .ph-eyebrow{font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:#a09080;margin-bottom:6px}
+    .ph-name{font-family:'DM Serif Display',serif;font-size:1.6rem;margin-bottom:4px}
+    .ph-sub{font-size:0.78rem;color:#a09080;margin-bottom:14px}
+    .ph-archetype{font-family:'DM Serif Display',serif;font-style:italic;font-size:0.88rem;color:#6a5e4a;padding:10px 12px;background:#f8f5f0;border-radius:10px;line-height:1.5}
+    .phase-content{padding:0 18px 90px}
+    .sec-eyebrow{font-size:0.58rem;letter-spacing:0.22em;text-transform:uppercase;color:#a09080;margin:16px 0 8px}
+    .phase-ls-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+    .hm-card{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 1px 8px rgba(0,0,0,0.05);margin-bottom:14px}
+
+    /* ── NAV ── */
+    .themes-banner{border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:0.75rem;line-height:1.5}
+    .themes-lbl{display:block;font-size:0.52rem;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:3px;opacity:0.65;font-style:normal}
+    .themes-val{font-family:'DM Serif Display',serif;font-style:italic}
+    .ef-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .ef-card{border-radius:14px;padding:14px 15px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden;min-height:80px}
+    .ef-lbl{font-size:0.55rem;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.65);font-weight:500}
+    .ef-val{font-family:'DM Serif Display',serif;font-size:1.25rem;color:#fff;line-height:1.2}
+    .ef-ico{position:absolute;right:10px;bottom:8px;font-size:2.6rem;opacity:0.28;line-height:1}
+    .life-preview{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 1px 8px rgba(0,0,0,0.05)}
+    .lp-row{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid #f0ebe3}
+    .lp-row:last-child{border-bottom:none;padding-bottom:0}
+    .lp-row:first-child{padding-top:0}
+    .lp-ico{font-size:1rem;width:22px;flex-shrink:0;margin-top:1px}
+    .lp-lbl{font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;color:#a09080;margin-bottom:2px}
+    .lp-val{font-size:0.82rem;color:#3a3020;line-height:1.4;font-weight:500}
+    .life-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .life-card{background:#fff;border-radius:12px;padding:11px 11px;box-shadow:0 1px 6px rgba(0,0,0,0.05);border-top:2.5px solid}
+    .life-ico{font-size:0.95rem;margin-bottom:4px}
+    .life-lbl{font-size:0.5rem;letter-spacing:0.16em;text-transform:uppercase;color:#a09080;margin-bottom:3px}
+    .life-val{font-size:0.6rem;color:#5a4e3a;line-height:1.45}
+    .affirmation-card{border-radius:12px;padding:13px 15px;font-family:'DM Serif Display',serif;font-style:italic;font-size:0.88rem;line-height:1.7}
+    .diet-focus-card{border-radius:14px;padding:14px 16px;overflow:hidden}
+    .df-lbl{font-size:0.55rem;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:10px}
+    .df-pills{display:flex;flex-wrap:wrap;gap:6px}
+    .df-pill{padding:6px 14px;border-radius:20px;font-size:0.78rem;font-weight:500;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.25)}
+    .bnav{position:fixed;bottom:0;left:0;width:100%;background:rgba(248,245,240,0.97);backdrop-filter:blur(16px);border-top:1px solid rgba(0,0,0,0.06);display:flex;justify-content:space-around;padding:10px 0 20px;z-index:100}
+    .nb{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;padding:4px 14px;border-radius:10px;transition:background 0.15s}
+    .nb:hover{background:rgba(0,0,0,0.03)}
+    .nb-ico{display:flex;align-items:center;justify-content:center;color:#c8b898;transition:color 0.2s}
+    .nb.active .nb-ico{color:#1a1410}
+    .nb-lbl{font-size:0.54rem;letter-spacing:0.08em;text-transform:uppercase;color:#c8b898;font-weight:500}
+    .nb.active .nb-lbl{color:#1a1410}
+  </style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="spl-sym" id="spl-sym">♀</div>
+  <div class="spl-title">Cycle Sync</div>
+  <div class="spl-sub">Synchronizacja z cyklem</div>
+  <div class="spl-dots">
+    <div class="spl-dot" style="background:#c06070"></div>
+    <div class="spl-dot" style="background:#60b050"></div>
+    <div class="spl-dot" style="background:#e8b020"></div>
+    <div class="spl-dot" style="background:#9060c0"></div>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- ── ONBOARDING ── -->
+  <div class="screen active" id="screen-onboard">
+    <div class="ob-hero-strip"></div>
+    <div class="ob-ico" id="ob-ico">♀</div>
+    <div class="ob-title">Cycle Sync</div>
+    <p class="ob-sub">Zsynchronizuj swój styl życia, jedzenie i energię z naturalnym rytmem cyklu.</p>
+    <div class="ob-phases">
+      <div class="ob-phase">
+        <div class="ob-phase-dot" style="background:rgba(192,96,112,0.15)">🌑</div>
+        <div class="ob-phase-lbl">Menstrua-cyjna</div>
+      </div>
+      <div class="ob-phase">
+        <div class="ob-phase-dot" style="background:rgba(200,144,48,0.15)">🌱</div>
+        <div class="ob-phase-lbl">Folikular-na</div>
+      </div>
+      <div class="ob-phase">
+        <div class="ob-phase-dot" style="background:rgba(64,168,96,0.15)">☀️</div>
+        <div class="ob-phase-lbl">Owula-cyjna</div>
+      </div>
+      <div class="ob-phase">
+        <div class="ob-phase-dot" style="background:rgba(144,96,192,0.15)">🌕</div>
+        <div class="ob-phase-lbl">Luteal-na</div>
+      </div>
+    </div>
+    <div class="ob-form">
+      <label class="ob-form-lbl">Pierwszy dzień ostatniej miesiączki</label>
+      <input type="date" id="ob-date" class="ob-date-input"/>
+      <button class="ob-btn" onclick="onboardStart()">Rozpocznij synchronizację →</button>
+    </div>
+  </div>
+
+  <!-- ── TODAY ── -->
+  <div class="screen" id="screen-today">
+    <div class="hero-bg" id="hero-bg">
+      <div class="hdr">
+        <span class="hdr-brand">Cycle Sync</span>
+        <div class="hdr-right">
+          <span class="hdr-lbl">Pierwszy dzień miesiączki</span>
+          <input type="date" id="dateInput"/>
+        </div>
+      </div>
+      <div class="hero-content">
+        <div class="hero-ico" id="hero-ico">🌑</div>
+        <div class="hero-text">
+          <span class="hero-eyebrow">Aktywna faza</span>
+          <div class="hero-name" id="hero-name">Menstruacyjna</div>
+          <div class="hero-archetype" id="hero-archetype"></div>
+          <div class="hero-range" id="hero-range"></div>
+          <div class="hero-tip" id="hero-tip"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="float-card">
+      <div class="fc-row">
+        <div class="fc-day">
+          <div class="fc-day-num" id="fc-day-num">1</div>
+          <div class="fc-day-lbl">dzień cyklu</div>
+        </div>
+        <div class="fc-right">
+          <div class="fc-stat" style="align-items:flex-end">
+            <div class="fc-stat-num" id="fc-left-num">6</div>
+            <div class="fc-stat-lbl">dni do końca fazy</div>
+          </div>
+        </div>
+      </div>
+      <div class="fc-strip" id="fc-strip"></div>
+      <div class="fc-prog-row">
+        <span class="fc-prog-lbl">Postęp fazy</span>
+        <strong class="fc-prog-val" id="fc-prog-val">0%</strong>
+      </div>
+      <div class="fc-track"><div class="fc-fill" id="fc-fill"></div></div>
+      <div class="fc-divider"></div>
+      <div class="fc-next" id="fc-next"></div>
+    </div>
+
+    <div class="today-content">
+      <div class="section">
+        <div class="ef-row" id="ef-row"></div>
+      </div>
+
+      <div class="section" id="mg-section" style="display:none">
+        <div class="mg-card">
+          <div class="mg-head">
+            <div class="mg-info">
+              <span class="mg-ico">💊</span>
+              <div>
+                <div class="mg-kk">Magnez — suplementacja</div>
+                <div class="mg-val">Szczególnie ważny</div>
+              </div>
+            </div>
+          </div>
+          <div class="mg-sub-txt" id="mg-sub-txt"></div>
+          <div class="mg-tiles" id="mg-tiles"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="diet-focus-card" id="diet-focus-card"></div>
+      </div>
+      <div class="section">
+        <div class="life-preview" id="life-preview"></div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <!-- ── EAT ── -->
+  <div class="screen" id="screen-eat">
+    <div id="eat-intro" style="padding:64px 18px 0"></div>
+    <div class="sub-tabs" id="sub-tabs" style="padding-top:6px"></div>
+    <div class="eat-body" id="eat-body"></div>
+  </div>
+
+  <!-- ── TIPS ── -->
+  <div class="screen" id="screen-tips">
+    <div class="tips-hdr">
+      <div class="screen-title">Wskazowki</div>
+    </div>
+    <div class="tips-body" id="tips-body"></div>
+  </div>
+
+  <!-- ── FAZA ── -->
+  <div class="screen" id="screen-phase">
+    <div id="phase-hero-bg" style="height:100px;background:#6030a0;transition:background 0.6s ease;animation:breathe 8s ease-in-out infinite"></div>
+    <div class="phase-float" id="phase-float" style="margin-top:-36px"></div>
+    <div class="phase-content" id="phase-content"></div>
+  </div>
+
+  <div class="bnav" id="bnav"></div>
+</div>
+
+<script>
+const MONTHS=["sty","lut","mar","kwi","maj","cze","lip","sie","wrz","paź","lis","gru"];
+const MAX_DAY=28;
+
+const PHASES={
+  menstrual:{
+    name:"Menstruacyjna",ico:"🌑",days:"Dzień 1–6",range:[1,6],len:6,
+    accent:"#b05060",dotColor:"#c06070",
+    grad:"linear-gradient(135deg,#c06070 0%,#8a3850 55%,#5a1830 100%)",
+    archetype:"Mądra Kobieta",season:"Zima ❄️",mood:"Refleksyjna, spokojna, wrażliwa",
+    themes:"Odpoczynek, uzdrawianie, introspekcja",
+    work:"Planowanie, ocena projektów, strategiczne myślenie",
+    workShort:"Planowanie i ocena",
+    dietFocus:["Żelazo","Magnez","Nawodnienie","Ciepłe potrawy"],
+    social:"Ogranicz spotkania, czas dla siebie, cisza",
+    socialShort:"Czas dla siebie",
+    personal:"Dziennik, medytacja, łagodne rytuały",
+    personalShort:"Dziennik i medytacja",
+    affirmation:"Zasługuję na odpoczynek. Moje ciało jest mądre.",
+    desc:"Faza menstruacyjna to czas, gdy poziom estrogenów i progesteronu jest najniższy. Twoje ciało pracuje intensywnie — złuszcza błonę śluzową macicy i przygotowuje się do nowego cyklu. Energia naturalnie opada, intuicja jest wyostrzona, a umysł szczególnie zdolny do strategicznego myślenia i oceny. To Twój wewnętrzny odpoczynek, czas refleksji i uzdrawiania. Według archetypu jesteś teraz Mądra Kobieta — spokojna, introspekcyjna, połączona ze swoją wewnętrzną wiedzą.",
+    energy:"Niska",focus:"Detoks & refleksja",
+    tip:"Bądź dla siebie wyjątkowo łagodna — to Twój miesięczny detoks.",
+    hormoneNote:"Najniższe stężenia hormonów",
+    hormones:[{n:"Estrogen",v:15,c:"#e07070"},{n:"Progesteron",v:10,c:"#c090c0"},{n:"LH",v:10,c:"#90b0d0"},{n:"FSH",v:20,c:"#80c0a0"}],
+    lifestyle:[
+      {ico:"💼",t:"Praca",v:"Najlepsze godziny to 10:00–13:00. To czas na refleksję, przegląd celów i ocenę projektów — nie na wielkie spotkania ani nowe inicjatywy. Planuj lekko, słuchaj ciała."},
+      {ico:"🧘",t:"Ruch",v:"Joga, spokojny spacer, stretching. Ciało traci żelazo i potrzebuje regeneracji — intensywny trening może nasilać zmęczenie. Postaw na delikatny ruch i oddech."},
+      {ico:"🤝",t:"Życie społeczne",v:"Ogranicz zobowiązania. To naturalny czas introspekcji — spotkania w małym gronie, cisza i własna przestrzeń robią więcej dobrego niż wypełniony kalendarz."},
+      {ico:"🌸",t:"Prywatnie",v:"Dziennik, kąpiel, ciepła herbata. Daj sobie pozwolenie na odpoczynek bez poczucia winy. Regeneracja teraz to inwestycja w energię przez resztę cyklu."},
+      {ico:"🙂",t:"Nastrój",v:"Spokój, introspekcja, wrażliwość. Możesz czuć się bardziej emocjonalna — to naturalne. Nie oceniaj się, zamiast tego słuchaj, czego potrzebujesz."}
+    ],
+    mg:true,
+    eatGroups:[
+      {title:"Warzywa",ico:"🥦",items:["Szpinak, jarmuż","Buraki","Pieczarki, grzyby","Wodorosty, algi","Bataty, warzywa korzeniowe","Brokuły, kalafior"]},
+      {title:"Owoce",ico:"🍓",items:["Żurawina, jeżyny","Borówki, jagody","Winogrona concord","Arbuz"]},
+      {title:"Zboże",ico:"🌾",items:["Kasza gryczana","Dziki ryż"]},
+      {title:"Orzechy & Nasiona",ico:"🥜",items:["Nasiona dyni (15mg Fe)","Siemię lniane, sezam","Kasztany","Nasiona słonecznika"]},
+      {title:"Białko",ico:"🥩",items:["Wątróbka (18,7mg Fe)","Wołowina (2,6mg Fe)","Fasola czerwona, soja","Sardynki, owoce morza","Kaczka, wieprzowina","Twarde sery"]},
+      {title:"Tłuszcze & Omega-3",ico:"🫒",items:["Olej lniany","Masło orzechowe","Pestki dyni, sezam","Ciemna czekolada"]},
+      {title:"Rozgrzewające przyprawy",ico:"🟡",items:["Kurkuma","Imbir","Cynamon"]},
+      {title:"Dodatki",ico:"🍜",items:["Rosół, bulion kostny","Miso, tamari","Zielona herbata"]}
+    ],
+    avoid:[{ico:"🍷",label:"Alkohol"},{ico:"☕",label:"Kofeina"},{ico:"🍟",label:"Smażone jedzenie"},{ico:"🧊",label:"Zimne potrawy i napoje"}],
+    meals:[
+      {type:"Sniadanie",ico:"🍚",name:"Owsianka z chia i jabłkiem",kcal:400,desc:"Owsianka na mleku roślinnym z nasionami chia, jabłkiem i cynamonem."},
+      {type:"Obiad",ico:"🍲",name:"Zupa krem z czerwonej soczewicy",kcal:500,desc:"Zupa krem z czerwonej soczewicy z imbirem i kurkumą, podana z pełnoziarnistym pieczywem."},
+      {type:"Kolacja",ico:"🥗",name:"Sałatka z ciecierzycą i rukolą",kcal:400,desc:"Sałatka z ciecierzycą, rukolą, pomidorem, pestkami dyni i oliwą z oliwek."},
+      {type:"Przekaska",ico:"🥜",name:"Garść orzechów",kcal:100,desc:"Mieszanka orzechów włoskich, migdałów lub nerkowców."}
+    ],
+    meals2:{
+      title:"Odpoczynek i regeneracja",
+      desc:"Ta faza to czas komfortu i regeneracji. Energia jest niska, dlatego ciało potrzebuje ciepłych, pożywnych posiłków, które pomogą uzupełnić to, co traci.",
+      items:[
+        {type:"Sniadanie",ico:"🍚",name:"Owsianka z nasionami chia i masłem migdałowym",desc:"Z cynamonem i orzechami — rozgrzewająca i syta."},
+        {type:"Obiad",ico:"🍲",name:"Zupa z soczewicy i jarmużu z marchewką",desc:"Z oliwą z oliwek i pieczoną marchewką — bogata w żelazo i magnez."},
+        {type:"Kolacja",ico:"🐟",name:"Łosoś ze słodkimi ziemniakami i zielonymi warzywami",desc:"Sauté ze szpinakiem lub jarmużem — omega-3 i żelazo w jednym."},
+        {type:"Przekaska",ico:"🍫",name:"Ciemna czekolada, herbata ziołowa i daktyle",desc:"Magnez i naturalna słodycz — idealne na skurcze."}
+      ],
+      note:"Uzupełniaj żelazo i magnez, utrzymując łagodne trawienie. Pij dużo ziołowych herbat — pomagają na wzdęcia i skurcze."
+    },
+    tips:[
+      {icon:"🥩",title:"Żelazo i cynk",text:"Ze względu na utratę krwi wybieraj produkty bogate w cynk i żelazo: podroby, czerwone mięso, twarde sery, kasza gryczana, buraki, szpinak."},
+      {icon:"🫒",title:"Min. 35% tłuszczu w diecie",text:"Badanie z 2016 r. wykazało związek między spożyciem tłuszczu a jakością komórki jajowej. Dobre tłuszcze: pestki dyni, sezam, masło orzechowe, olej lniany."},
+      {icon:"🍚",title:"Rozgrzewające potrawy",text:"Według medycyny chińskiej menstruacja odpowiada zimie. Postaw na zupy, sosy, gulasze i przyprawy: kurkuma, imbir, cynamon."},
+      {icon:"🧠",title:"Stan zapalny",text:"Zadbaj o kwasy omega-3 i antyoksydanty redukujące stany zapalne w obrębie macicy."},
+      {icon:"🥦",title:"Magnez na skurcze",text:"Magnez może pomóc w zmniejszeniu skurczów menstruacyjnych. Źródła: zielone warzywa, orzechy, nasiona, pełnoziarniste produkty i ciemna czekolada."}
+    ],
+    snacks:[
+      "🍫 Miska owsianki z kakao, nasionami chia i masłem migdałowym",
+      "🌴 Daktyle nadziewane tahini lub masłem orzechowym",
+      "🌻 Pestki dyni"
+    ]
+  },
+  follicular:{
+    name:"Folikularna",ico:"🌱",days:"Dzień 7–12",range:[7,12],len:6,
+    accent:"#3a8828",dotColor:"#60b050",
+    grad:"linear-gradient(135deg,#70b840 0%,#3a8828 55%,#1a4810 100%)",
+    archetype:"Panna / Dziewica",season:"Wiosna 🌸",mood:"Świeżość, optymizm, kreatywność",
+    themes:"Nowe początki, kreatywność, ciekawość",
+    work:"Nowe projekty, burze mózgów, nauka, planowanie",
+    workShort:"Nowe projekty",
+    dietFocus:["Świeże produkty","Błonnik","Chude białka"],
+    social:"Poznawaj nowe osoby, networking, inspirujące rozmowy",
+    socialShort:"Networking i inspiracja",
+    personal:"Próbuj nowych rzeczy, odkrywaj, inspiruj się",
+    personalShort:"Odkrywaj nowe rzeczy",
+    affirmation:"Jestem pełna energii i pomysłów. Wszystko jest możliwe.",
+    desc:"Faza folikularna zaczyna się zaraz po menstruacji i trwa aż do owulacji. Jajnik dojrzewa pęcherzyk Graafa, a rosnący poziom estrogenów przynosi przypływ energii, kreatywności i optymizmu. Czujesz się świeżo — jak na początku wiosny. To najlepszy moment na rozpoczynanie nowych projektów, naukę i planowanie. Według archetypu jesteś Panna — pełna potencjału, ciekawa świata, gotowa na nowe doświadczenia.",
+    energy:"Wyższa",focus:"Tworzenie",
+    tip:"Planuj duże projekty — masz teraz najwięcej energii twórczej!",
+    hormoneNote:"Rosnący estrogen dodaje energii",
+    hormones:[{n:"Estrogen",v:55,c:"#e07070"},{n:"Progesteron",v:12,c:"#c090c0"},{n:"LH",v:25,c:"#90b0d0"},{n:"FSH",v:40,c:"#80c0a0"}],
+    lifestyle:[
+      {ico:"💼",t:"Praca",v:"Złota pora to 8:00–12:00. Twój umysł chłonie szybko i lubi wyzwania — nowe projekty, kreatywne planowanie, burze mózgów. Zacznij teraz to, co chcesz realizować przez cały cykl."},
+      {ico:"🏃",t:"Ruch",v:"Interwały, trening siłowy, cardio. Rosnący estrogen zwiększa wytrzymałość i tolerancję bólu — ciało odpowie dobrze na intensywniejszy wysiłek. Świetny czas na nowe aktywności."},
+      {ico:"🤝",t:"Życie społeczne",v:"Networking, nowe znajomości, inspirujące rozmowy. Jesteś otwarta i ciekawa — to idealny moment na poznawanie nowych ludzi i środowisk."},
+      {ico:"🌸",t:"Prywatnie",v:"Próbuj nowych rzeczy — nowy przepis, nowa trasa, nowa książka. Energia folikularna lubi odkrywanie. Planuj to, czego wcześniej odkładałaś."},
+      {ico:"🙂",t:"Nastrój",v:"Świeżość, optymizm, motywacja. To jedna z najlepszych faz emocjonalnie — korzystaj z niej i rób rzeczy, które wymagają odwagi lub inicjatywy."}
+    ],
+    mg:false,
+    eatGroups:[
+      {title:"Warzywa",ico:"🥦",items:["Brokuły, brukselka","Karczochy, marchew","Cukinia, rabarbar, pietruszka","Pieczarki","Groszek, fasola szparagowa"]},
+      {title:"Owoce",ico:"🍊",items:["Awokado","Cytrusy (pomarańcza, grejpfrut)","Granat, śliwka, wiśnia"]},
+      {title:"Zboże",ico:"🌾",items:["Płatki owsiane, jęczmień","Żyto, pszenica"]},
+      {title:"Orzechy & Nasiona",ico:"🥜",items:["Pestki dyni, siemię lniane","Orzechy brazylijskie","Nerkowce"]},
+      {title:"Białko",ico:"🥗",items:["Soczewica, groch","Jajka, drób","Pstrąg, owoce morza"]},
+      {title:"Fermentowane & probiotyki",ico:"🫙",items:["Kiszonki (kapusta, ogórki)","Kefiry, kombucha","Kimchi"]},
+      {title:"Dodatki",ico:"🥜",items:["Masło orzechowe","Oliwki","Ocet"]}
+    ],
+    avoid:[{ico:"🧊",label:"Zimna woda z lodem"},{ico:"🥩",label:"Ciężkie, tłuste potrawy"}],
+    meals:[
+      {type:"Sniadanie",ico:"🍳",name:"Jajecznica z pomidorem na grzance",kcal:400,desc:"Jajecznica z 2 jajek, pomidorem i rukolą na grzance z pełnoziarnistego chleba."},
+      {type:"Obiad",ico:"🥢",name:"Pieczone tofu z warzywami i quinoa",kcal:500,desc:"Pieczone tofu z marchewką, cukinią, batatem i komosą ryżową."},
+      {type:"Kolacja",ico:"🥗",name:"Sałatka z kaszą jaglaną i brokułami",kcal:400,desc:"Kasza jaglana, brokuły, pomidorki, nasiona słonecznika i oliwa."},
+      {type:"Przekaska",ico:"🫙",name:"Jogurt grecki z orzechami i miodem",kcal:100,desc:"Jogurt grecki z garścią orzechów i łyżką miodu."}
+    ],
+    meals2:{
+      title:"Energia i kreatywność",
+      desc:"Po menstruacji czujesz się odświeżona i ciekawa świata. Ciało świetnie reaguje na lekkie, żywotne potrawy, które pobudzają energię i kreatywność.",
+      items:[
+        {type:"Sniadanie",ico:"🥤",name:"Smoothie ze szpinakiem, bananem, jagodami i siemieniem lnianym",desc:"Lekkie, orzeźwiające — idealne na początek dnia."},
+        {type:"Obiad",ico:"🥗",name:"Miska z kurczakiem, quinoa i awokado",desc:"Z winegretem cytrynowym — białko i dobre tłuszcze."},
+        {type:"Kolacja",ico:"🍜",name:"Stir-fry z warzywami i tofu lub krewetkami",desc:"Z ryżem jaśminowym — szybkie i pełne warzyw."},
+        {type:"Przekaska",ico:"🍏",name:"Jogurt grecki z miodem lub jabłko z masłem migdałowym",desc:"Białko i błonnik — dla stałej energii."}
+      ],
+      note:"To czas na eksperymentowanie z nowymi przepisami. Jak wiosna — świeżo, jasno i pełne rozpędu."
+    },
+    tips:[
+      {icon:"😯",title:"Lżejsze metody obróbki",text:"Poziom estrogenów rośnie. Postaw na gotowanie na parze lub smażenie w małej ilości tłuszczu."},
+      {icon:"🫙",title:"Zadbaj o mikrobiom",text:"Faza folikularna przygotowuje organizm na owulację. Spożycie kiszonek, kefiru i produktów fermentowanych przygotuje estrobolom do odpowiedniej funkcji."},
+      {icon:"🥦",title:"Kluczowe produkty",text:"Brokuły, marchew, siemię lniane, cytrusy, kiszonki, płatki owsiane, awokado, nerkowce, pieczarki, cukinia, jajka, orzechy brazylijskie, oliwki, kombucha."}
+    ],
+    snacks:[
+      "🫐 Grecki jogurt z jagodami, siemieniem lnianym i miodem",
+      "🍎 Plasterki jabłka z masłem z nerkowców i cynamonem",
+      "🥕 Marchewki w słupkach z hummusem"
+    ]
+  },
+  ovulatory:{
+    name:"Owulacyjna",ico:"☀️",days:"Dzień 13–16",range:[13,16],len:4,
+    accent:"#c8960a",dotColor:"#e8b020",
+    grad:"linear-gradient(135deg,#f0c030 0%,#c8960a 55%,#7a5500 100%)",
+    archetype:"Matka",season:"Lato ☀️",mood:"Pewna siebie, charyzmatyczna, otwarta",
+    themes:"Płodność, wzrost, wdzięczność",
+    work:"Spotkania, prezentacje, wystąpienia publiczne, projekty współpracy",
+    workShort:"Prezentacje i spotkania",
+    dietFocus:["Antyoksydanty","Kwasy omega-3","Błonnik"],
+    social:"Spotykaj się z innymi, świętuj, buduj relacje",
+    socialShort:"Buduj relacje",
+    personal:"Inspiruj się, ucz, porządkuj, próbuj nowych rzeczy",
+    personalShort:"Inspiracja i nauka",
+    affirmation:"Jestem odważna i śmiała. Moje pomysły mają wartość.",
+    desc:"Faza owulacyjna to szczyt cyklu — estrogeny osiągają maksymalny poziom, a jajeczko jest uwalniane. Twoja energia i charyzma są w zenicie. Czujesz się pewna siebie, otwarta, komunikatywna — jak w pełni lata. To idealny czas na wystąpienia publiczne, ważne rozmowy i budowanie relacji. Według archetypu jesteś Matka — hojnie dzielisz się energią, inspirujesz innych i troszczysz się o relacje wokół siebie.",
+    energy:"Najwyższa",focus:"Komunikacja",
+    tip:"Zaplanuj ważne rozmowy — jesteś w szczytowej formie!",
+    hormoneNote:"Szczyt estrogenów — maksymalna energia i charyzma",
+    hormones:[{n:"Estrogen",v:95,c:"#e07070"},{n:"Progesteron",v:20,c:"#c090c0"},{n:"LH",v:90,c:"#90b0d0"},{n:"FSH",v:60,c:"#80c0a0"}],
+    lifestyle:[
+      {ico:"💼",t:"Praca",v:"Szczyt możliwości — 9:00–14:00. Prezentacje, negocjacje, spotkania jeden na jeden, wystąpienia publiczne. Testosteron daje pewność siebie, estrogen — charyzmę. Korzystaj z tego okna."},
+      {ico:"🏋️",t:"Ruch",v:"HIIT, intensywny trening siłowy, grupowe zajęcia. Ciało jest w formie szczytowej — możesz pobić swoje rekordy. Metabolizm jest sprawny, regeneracja szybka."},
+      {ico:"🤝",t:"Życie społeczne",v:"Spotykaj się z innymi, świętuj, buduj relacje. Jesteś charyzmatyczna i otwarta — inni chętnie spędzają z tobą czas. To moment na ważne rozmowy i wspólne projekty."},
+      {ico:"🌸",t:"Prywatnie",v:"Inspiruj się, ucz, porządkuj. Energia jest wysoka — możesz zrobić więcej niż zwykle i czerpać z tego satysfakcję. Dobry czas na rozmowy, które wcześniej odkładałaś."},
+      {ico:"🙂",t:"Nastrój",v:"Pewna siebie, charyzmatyczna, otwarta. Czujesz się atrakcyjnie i kompetentnie. To naturalne — pozwól sobie błyszczeć."}
+    ],
+    mg:false,
+    eatGroups:[
+      {title:"Warzywa kapustne",ico:"🥦",items:["Brokuły, brukselka","Kalafior, kapusta","Szpinak, bakłażan","Szparagi, papryka czerwona"]},
+      {title:"Owoce",ico:"🍓",items:["Truskawki, maliny","Jagody, borówki","Kokos, figa","Morela, kantalup"]},
+      {title:"Zboże",ico:"🌾",items:["Komosa ryżowa (quinoa)","Amarantus"]},
+      {title:"Orzechy & Nasiona",ico:"🥜",items:["Pestki dyni, pistacje","Orzech pekan, migdały"]},
+      {title:"Białko",ico:"🐟",items:["Dziki łosoś","Jajka, krewetki","Soczewica, tuńczyk","Jagnięcina"]},
+      {title:"Zdrowe tłuszcze",ico:"🥑",items:["Awokado","Olej lniany","Pestki dyni","Orzechy pekan"]},
+      {title:"Dodatki",ico:"🍫",items:["Gorzka czekolada","Maca","Kimchi, kiszonki","Rosół"]}
+    ],
+    avoid:[{ico:"🧊",label:"Zimna woda z lodem"},{ico:"🍬",label:"Cukier"},{ico:"☕",label:"Nadmiar kofeiny"},{ico:"🍟",label:"Wysoko przetworzone"}],
+    meals:[
+      {type:"Sniadanie",ico:"🍌",name:"Smoothie z bananem, jagodami i lnem",kcal:400,desc:"Smoothie z banana, jagód, szpinaku, białka roślinnego i nasion lnu."},
+      {type:"Obiad",ico:"🍛",name:"Tofu w curry z batatami",kcal:500,desc:"Tofu w curry z batatami i sałatką z pomidorem i ogórkiem."},
+      {type:"Kolacja",ico:"🐟",name:"Pieczony łosoś z brokułami",kcal:400,desc:"Pieczony łosoś (raz w tygodniu) z brokułami, kaszą gryczaną i oliwą."},
+      {type:"Przekaska",ico:"🧀",name:"Serek wiejski z ogórkiem",kcal:100,desc:"Serek wiejski z ogórkiem i koperkiem."}
+    ],
+    meals2:{
+      title:"Szczyt i siła",
+      desc:"To faza najwyższej energii. Trawienie jest sprawne, czujesz się żywotna. Jedz lżej — nawadniające potrawy pełne antyoksydantów.",
+      items:[
+        {type:"Sniadanie",ico:"🥑",name:"Jajecznica z awokado na toście i zieleniną",desc:"Białko i dobre tłuszcze — idealny start."},
+        {type:"Obiad",ico:"🍱",name:"Miska poke z łososiem, brązowym ryżem i ogórkiem",desc:"Świeżo i lekko — pełne omega-3."},
+        {type:"Kolacja",ico:"🌮",name:"Tacos z krewetkami, salsą mango i pieczoną papryką",desc:"Kolorowo i aromatycznie — korzystaj z tej energii!"},
+        {type:"Przekaska",ico:"🫐",name:"Jagody, ciecierzyca pieczona lub trail mix",desc:"Antyoksydanty i energia — bez kompromisów."}
+      ],
+      note:"Nawadniaj się regularnie — wysoki estrogen może sprzyjać retencji wody. Sięgaj po błonnik, by wspierać naturalną eliminację nadmiaru hormonów."
+    },
+    tips:[
+      {icon:"🍱",title:"Dieta przeciwzapalna",text:"Hormony wzrastają — postaw na niskoprzetworzone produkty i dużą ilość antyoksydantów."},
+      {icon:"🥦",title:"Warzywa kapustne — kluczowe!",text:"Estrogeny osiągają szczyt. Brokuły, brukselka, kalafior i kapusta regulują gospodarkę estrogenową przez wątrobę."},
+      {icon:"🥤",title:"Ochładzające potrawy",text:"Owulacja to pora letnia — postaw na szejki, sałatki i surowe warzywa."},
+      {icon:"💪",title:"Odżywiaj jajniki!",text:"Przygotowuj bogato odżywcze posiłki: łosoś, szpinak, truskawki, quinoa, szparagi, migdały, krewetki, soczewica."}
+    ],
+    snacks:[
+      "🍚 Ryżowe placki z ogórkiem i awokado",
+      "🥤 Koktajl jagodowy ze szpinakiem, siemieniem lnianym i wodą kokosową",
+      "🍓 Truskawki w gorzkiej czekoladzie"
+    ]
+  },
+  luteal:{
+    name:"Lutealna",ico:"🌕",days:"Dzień 17–28",range:[17,28],len:12,
+    accent:"#6030a0",dotColor:"#9060c0",
+    grad:"linear-gradient(135deg,#9060c0 0%,#603888 55%,#281848 100%)",
+    archetype:"Dzika Kobieta",season:"Jesień 🍂",mood:"Skupiona, wrażliwa, introspekcyjna",
+    themes:"Ugruntowanie, uzdrawianie, równowaga",
+    work:"Zamykanie projektów, praca analityczna, porządkowanie harmonogramu",
+    workShort:"Zamykanie projektów",
+    dietFocus:["Złożone węglowodany","Magnez","Witaminy z grupy B"],
+    social:"Ogranicz spotkania, detoks od mediów społecznościowych",
+    socialShort:"Ogranicz spotkania",
+    personal:"Czas sama ze sobą, dziennik, uzdrawianie",
+    personalShort:"Czas dla siebie",
+    affirmation:"Jestem zorganizowana i odporna. Honoruję swój umysł, ciało i duszę.",
+    desc:"Faza lutealna następuje po owulacji i trwa aż do początku menstruacji. Progesteron dominuje — ciało przygotowuje się na ewentualną ciążę lub kolejną menstruację. Energia powoli opada, uwaga skupia się na detalach i porządkowaniu. Jesteś jak jesień — zbierasz plony, zamykasz, podsumowujesz. To czas na kończenie projektów, edycję i pracę analityczną. Według archetypu jesteś Dzika Kobieta — autentyczna, introspekcyjna, blisko swoich prawdziwych potrzeb.",
+    energy:"Opada",focus:"Analiza & finalizowanie",
+    tip:"Kończ projekty — Twój umysł analityczny jest teraz najostrzejszy.",
+    hormoneNote:"Progesteron dominuje — skupienie i detale",
+    hormones:[{n:"Estrogen",v:45,c:"#e07070"},{n:"Progesteron",v:80,c:"#c090c0"},{n:"LH",v:15,c:"#90b0d0"},{n:"FSH",v:15,c:"#80c0a0"}],
+    lifestyle:[
+      {ico:"💼",t:"Praca",v:"Złota godzina skupienia to 8:00–11:00. Edycja, analiza, finalizowanie — umysł jest precyzyjny i wykrywa detale, które wcześniej umykały. Unikaj nowych zobowiązań pod koniec fazy."},
+      {ico:"🚶",t:"Ruch",v:"Spacery, pilates, joga, pływanie. Progesteron sprzyja spokojnemu, rytmicznemu ruchowi. Intensywny trening może nasilać zmęczenie i PMS — słuchaj ciała i zwolnij."},
+      {ico:"🤝",t:"Życie społeczne",v:"Ogranicz spotkania, detoks od mediów społecznościowych. Potrzebujesz więcej przestrzeni dla siebie — nie ma w tym nic złego. Wybieraj bliskich, nie tłum."},
+      {ico:"🌸",t:"Prywatnie",v:"Czas dla siebie, dziennik, uzdrawianie. Faza lutealna lubi rytuały — ciepła kąpiel, wcześniejsze wstawanie od ekranu, świeczka wieczorem. Daj sobie to, czego potrzebujesz."},
+      {ico:"🙂",t:"Nastrój",v:"Skupiona, wrażliwa, introspekcyjna. Możesz być bardziej krytyczna wobec siebie i innych — to efekt hormonów, nie prawda o tobie. Zwolnij, obserwuj, nie oceniaj."}
+    ],
+    mg:true,
+    eatGroups:[
+      {title:"Warzywa (błonnikowe)",ico:"🥦",items:["Dynia, batat, ziemniak","Kapusta, kalafior, brokuły","Marchew, buraki, cebula","Ogórek, biała rzodkiew"]},
+      {title:"Owoce",ico:"🍎",items:["Jabłko, gruszka","Daktyl, rodzynki","Brzoskwinia","Suszone śliwki"]},
+      {title:"Zboże",ico:"🌾",items:["Brązowy ryż","Proso, kasza jaglana"]},
+      {title:"Orzechy & Nasiona (magnez!)",ico:"🌻",items:["Nasiona słonecznika","Sezam, orzech piniowy","Orzechy włoskie, laskowe","Pestki dyni"]},
+      {title:"Białko",ico:"🐟",items:["Ciecierzyca, biała fasola","Indyk (tryptofan!)","Dziki łosoś, dorsz","Halibut, flądra","Wołowina trawiona"]},
+      {title:"Źródła magnezu",ico:"🟣",items:["Kakao, gorzka czekolada","Orzechy, nasiona","Kasza, rośliny strączkowe","Napar z mięty"]},
+      {title:"Dodatki jesień",ico:"🍂",items:["Hummus","Pełnoziarnista pita","Suszone owoce"]}
+    ],
+    avoid:[{ico:"🥛",label:"Nabiał"},{ico:"🍬",label:"Cukier i kofeina"},{ico:"🍟",label:"Smażone jedzenie"},{ico:"🍷",label:"Alkohol"},{ico:"🌶️",label:"Ostre potrawy"},{ico:"🍞",label:"Rafinowane węglowodany"}],
+    meals:[
+      {type:"Sniadanie",ico:"🍚",name:"Owsianka z masłem orzechowym i bananem",kcal:400,desc:"Owsianka z masłem orzechowym, bananem i cynamonem."},
+      {type:"Obiad",ico:"🥩",name:"Gulasz wołowy z kaszą jaglaną",kcal:500,desc:"Gulasz z wołowiny (raz w tygodniu) z marchewką, cebulą i selerem, podany z kaszą jaglaną."},
+      {type:"Kolacja",ico:"🥦",name:"Grillowane warzywa z hummusem",kcal:400,desc:"Grillowane warzywa (cukinia, papryka, bakłażan) z hummusem i pitą."},
+      {type:"Przekaska",ico:"🌻",name:"Prażone nasiona dyni i suszone owoce",kcal:100,desc:"Prażone nasiona dyni z suszonymi owocami (śliwki, rodzynki)."}
+    ],
+    meals2:{
+      title:"Ugruntowanie i komfort",
+      desc:"W tej fazie apetyt jest najsilniejszy. Metabolizm przyspiesza, więc ciało naturalnie potrzebuje więcej kalorii i pożywnych, ugruntowujących posiłków. Postaw na złożone węglowodany, magnez i zdrowe tłuszcze.",
+      items:[
+        {type:"Sniadanie",ico:"🎃",name:"Owsianka dyniowa z orzechami włoskimi i gałką muszkatołową",desc:"Rozgrzewająca i syta — stabilizuje poziom cukru."},
+        {type:"Obiad",ico:"🌶️",name:"Chili z indykiem, czarną fasolą i brązowym ryżem",desc:"Pełne białka, błonnika i magnezu."},
+        {type:"Kolacja",ico:"🥕",name:"Pieczone warzywa korzeniowe z quinoa i kurczakiem",desc:"Ugruntowujące i pożywne — idealne na wieczór."},
+        {type:"Przekaska",ico:"🍫",name:"Banan z masłem orzechowym lub gorzka czekolada z migdałami",desc:"Magnez i naturalna słodycz — na zachcianki."}
+      ],
+      note:"Zachcianki w tej fazie są całkowicie normalne — to sygnały ciała. Zamiast walczyć, daj sobie pożywne alternatywy."
+    },
+    tips:[
+      {icon:"🔥",title:"Zwiększ kalorie o 100–400 kcal!",text:"Metabolizm przyspiesza, spada poziom estrogenów wpływających na sytność. Duże restrykcje kaloryczne mogą nasilać PMS! Jedz regularnie i pełnowartościowo."},
+      {icon:"🌾",title:"Więcej błonnika",text:"Progesteron spowalnia perystaltykę jelit. Jedz brokuły, kalafior, buraki, marchew, kapustę i suszone owoce. Jeśli zwiększasz błonnik — pij więcej wody!"},
+      {icon:"🟣",title:"Magnez — klucz do PMS",text:"Niedobory magnezu nasilają objawy PMS. Kakao, orzechy, kasza, rośliny strączkowe. Suplementuj magnez od 21 dnia cyklu!"},
+      {icon:"🍂",title:"Gotowanie i pieczenie",text:"Faza lutealna to jesień. Postaw na gotowanie i pieczenie. Unikaj zimnych, surowych posiłków."}
+    ],
+    snacks:[
+      "🍌 Banan z masłem migdałowym i cynamonem",
+      "🍫 Owsiane kulki energetyczne z kakao, owsem i miodem",
+      "🫘 Pieczona ciecierzyca",
+      "🌻 Mieszanka studencka z pestkami dyni i orzechami"
+    ]
+  }
+};
+
+const PHASE_ORDER=["menstrual","follicular","ovulatory","luteal"];
+const NAV_ICONS={
+  today:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><line x1="10" y1="6" x2="10" y2="10"/><line x1="10" y1="10" x2="13" y2="12"/></svg>',
+  eat:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M7 3v5a3 3 0 0 0 6 0V3"/><line x1="10" y1="11" x2="10" y2="17"/></svg>',
+  phase:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="8" r="4"/><line x1="10" y1="12" x2="10" y2="17"/><line x1="7" y1="17" x2="13" y2="17"/></svg>'
+};
+const NAV=[{key:"today",lbl:"Dziś"},{key:"eat",lbl:"Dieta"},{key:"phase",lbl:"Faza"}];
+
+let state={day:null,phaseKey:"menstrual",screen:"today",eatTab:"eat",lsTab:"Nastrój",menuIdx:0,startDate:"",mgChecked:{},eatChecked:{}};
+
+function loadSaved(){try{const s=localStorage.getItem("cs3");return s?JSON.parse(s):null}catch(e){return null}}
+function saveState(){try{localStorage.setItem("cs3",JSON.stringify({startDate:state.startDate,mgChecked:state.mgChecked,eatChecked:state.eatChecked}))}catch(e){}}
+
+function getPhaseKey(d){if(d<=6)return"menstrual";if(d<=12)return"follicular";if(d<=16)return"ovulatory";return"luteal"}
+function nextPhaseKey(k){const i=PHASE_ORDER.indexOf(k);return PHASE_ORDER[(i+1)%4]}
+
+function formatDate(dateStr,extraDays){
+  const parts=dateStr.split("-");
+  const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  d.setDate(d.getDate()+extraDays);
+  return d.getDate()+" "+MONTHS[d.getMonth()];
+}
+
+// ── NAV ──
+function renderNav(){
+  const a=state.day?PHASES[state.phaseKey].accent:"#9060c0";
+  document.getElementById("bnav").innerHTML=NAV.map(n=>{
+    const isActive=n.key===state.screen;
+    return '<button class="nb'+(isActive?" active":"")+'" onclick="switchScreen(\''+n.key+'\')" style="'+(isActive?"--phase-color:"+a:"")+'">'+
+    '<span class="nb-ico" style="'+(isActive?"color:"+a:"")+'">'+NAV_ICONS[n.key]+'</span>'+
+    '<span class="nb-lbl" style="'+(isActive?"color:"+a:"")+'">'+n.lbl+'</span></button>';
+  }).join("");
+}
+
+function switchScreen(key){
+  state.screen=key;
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("screen-"+key).classList.add("active");
+  renderNav();
+  if(key==="eat") renderEat();
+  if(key==="phase") renderPhaseScreen();
+}
+
+
+// ── TODAY ──
+function renderToday(){
+  if(!state.day) return;
+  const p=PHASES[state.phaseKey];
+  const a=p.accent;
+
+  // color phase icons
+  const splSym=document.getElementById("spl-sym");
+  const obIco=document.getElementById("ob-ico");
+  if(splSym) splSym.style.color=a;
+  if(obIco) obIco.style.color=a;
+
+  // gradient hero
+  document.getElementById("hero-bg").style.background=p.grad;
+  document.getElementById("hero-bg").style.backgroundSize="300% 300%";
+  document.getElementById("hero-ico").textContent=p.ico;
+  document.getElementById("hero-name").textContent=p.name;
+  document.getElementById("hero-archetype").textContent=p.archetype+" · "+p.season;
+  document.getElementById("hero-range").textContent=p.days;
+  document.getElementById("hero-tip").textContent="✨ "+p.tip;
+
+  // float card
+  const day=state.day;
+  const daysLeft=p.range[1]-day+1;
+  const prog=Math.round(((day-p.range[0])/(p.len>1?p.len-1:1))*100);
+  document.getElementById("fc-day-num").textContent=day;
+  document.getElementById("fc-day-num").style.color=a;
+  document.getElementById("fc-left-num").textContent=daysLeft;
+  document.getElementById("fc-left-num").style.color=a;
+  document.getElementById("fc-prog-val").textContent=prog+"%";
+  document.getElementById("fc-prog-val").style.color=a;
+  document.getElementById("fc-fill").style.width=prog+"%";
+  document.getElementById("fc-fill").style.background=a;
+
+  // strip
+  const phaseColors={menstrual:"#c06070",follicular:"#60b050",ovulatory:"#e8b020",luteal:"#9060c0"};
+  document.getElementById("fc-strip").innerHTML=Array.from({length:28},(_,i)=>{
+    const n=i+1;
+    const pk=getPhaseKey(n);
+    const col=phaseColors[pk];
+    let style="";
+    if(n<day) style="background:"+col+"70";
+    else if(n===day) style="background:"+col+";box-shadow:0 0 0 2px #fff,0 0 0 3.5px "+col;
+    else style="background:"+col+"20";
+    return'<div class="fc-dot" style="'+style+'"></div>';
+  }).join("");
+
+  // next phase
+  const nk=nextPhaseKey(state.phaseKey);
+  const np=PHASES[nk];
+  const dateStr=state.startDate?formatDate(state.startDate,day-1+daysLeft):"";
+  document.getElementById("fc-next").innerHTML=
+    '<div><div class="fc-next-lbl">Następna faza</div>'+
+    '<div class="fc-next-name">'+np.ico+" "+np.name+'</div></div>'+
+    (dateStr?'<div class="fc-next-date">od <strong>'+dateStr+'</strong></div>':'');
+
+  // energia + fokus — kolorowe kafle
+  document.getElementById("ef-row").innerHTML=
+    '<div class="ef-card" style="background:linear-gradient(135deg,'+a+'dd,'+a+'99)">'+
+    '<span class="ef-lbl">Energia</span><span class="ef-val">'+p.energy+'</span><span class="ef-ico">⚡</span></div>'+
+    '<div class="ef-card" style="background:linear-gradient(135deg,'+a+'bb,'+a+'66)">'+
+    '<span class="ef-lbl">Fokus</span><span class="ef-val">'+p.focus+'</span><span class="ef-ico">🎯</span></div>';
+
+  // life preview — zajawki
+  const ruch=p.lifestyle.find(l=>l.t==="Ruch");
+  document.getElementById("life-preview").innerHTML=
+    [
+      {ico:"🙂",lbl:"Nastrój",val:p.mood},
+      {ico:"🌸",lbl:"Prywatnie",val:p.personalShort},
+      {ico:"🏃",lbl:"Ruch",val:(()=>{const r=p.lifestyle.find(l=>l.t==="Ruch");if(!r)return"—";const s=r.v.split(".")[0];return s;})()},
+      {ico:"🤝",lbl:"Społecznie",val:p.socialShort},
+      {ico:"💼",lbl:"Praca",val:p.workShort}
+    ].map(r=>
+      '<div class="lp-row">'+
+      '<div class="lp-ico">'+r.ico+'</div>'+
+      '<div><div class="lp-lbl">'+r.lbl+'</div><div class="lp-val">'+r.val+'</div></div>'+
+      '</div>'
+    ).join("");
+
+  renderMg();
+
+  // fokus dietetyczny
+  const df=document.getElementById("diet-focus-card");
+  df.style.background=a+"22";
+  df.style.border="1px solid "+a+"30";
+  df.style.borderRadius="14px";
+  df.style.padding="14px 16px";
+  df.innerHTML=
+    '<div style="font-size:0.55rem;letter-spacing:0.22em;text-transform:uppercase;color:'+a+';margin-bottom:9px;font-weight:500">🥗 Dieta</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px">'+
+    p.dietFocus.map(f=>'<span style="padding:5px 12px;border-radius:20px;font-size:0.78rem;font-weight:500;background:'+a+'30;color:'+a+'">'+f+'</span>').join("")+
+    '</div>'+
+    '<div style="font-size:0.78rem;color:#6a5a48;line-height:1.65;font-style:italic;padding-top:9px;border-top:1px solid '+a+'20">'+
+    p.meals2.note+'</div>';
+}
+
+// ── MAGNEZ ──
+function renderMg(){
+  const {day,phaseKey,startDate,mgChecked}=state;
+  const isMenstrualCont=phaseKey==="menstrual"&&day<=2;
+  const isDay20=day===20&&phaseKey==="luteal";
+  // pokazuj: dni 20-28 (lutealna), dni 1-2 (menstruacja kontynuacja)
+  const showMg=(phaseKey==="luteal"||(phaseKey==="menstrual"&&day<=2))&&day;
+  const activeSuppl=day>=21||isMenstrualCont;
+  document.getElementById("mg-section").style.display=showMg?"block":"none";
+  if(!showMg||!startDate) return;
+
+  const parts=startDate.split("-");
+  const cycleStart=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  const todayDate=new Date(); todayDate.setHours(0,0,0,0);
+
+  document.getElementById("mg-sub-txt").textContent=
+    isMenstrualCont
+      ?"Zaznaczaj dni, które masz za sobą"
+      :isDay20
+        ?"Jutro rozpoczynasz suplementację magnezu!"
+        :day<21
+          ?"Suplementacja zaczyna się za "+(21-day)+" dni"
+          :"Zaznaczaj dni, które masz za sobą";
+
+  // na dzień 20 — tylko info, bez kafelków
+  if(isDay20){
+    document.getElementById("mg-tiles").innerHTML="";
+    return;
+  }
+
+  let html="";
+  for(let i=0;i<10;i++){
+    const cd=21+i;
+    const dt=new Date(cycleStart);
+    dt.setDate(dt.getDate()+cd-1);
+    const isToday=dt.toDateString()===todayDate.toDateString();
+    const isPast=dt<todayDate;
+    const isDone=!!mgChecked[String(cd)];
+    if(!activeSuppl){
+      // lutealna, za wcześnie (dni 17-20 już obsłużone wyżej)
+      html+='<div class="mg-tile mg-tile-off"><span>'+dt.getDate()+'</span><span style="font-size:0.5rem">'+MONTHS[dt.getMonth()]+'</span></div>';
+    } else {
+      const bg=isDone?"#7a5090":isPast||isMenstrualCont?"#ddd0ee":isToday?"#c4a0dc":"#f0eaf8";
+      const col=isDone?"#fff":"#7a5090";
+      const brd=isToday?"1.5px solid #7a5090":"1.5px solid transparent";
+      html+='<div class="mg-tile" data-mgday="'+cd+'" style="background:'+bg+';color:'+col+';border:'+brd+'">'+
+        (isDone?'<span style="font-size:1rem">✓</span>':'<span>'+dt.getDate()+'</span><span style="font-size:0.5rem">'+MONTHS[dt.getMonth()]+'</span>')+
+      '</div>';
+    }
+  }
+  document.getElementById("mg-tiles").innerHTML=html;
+}
+
+function toggleMg(cd){state.mgChecked[String(cd)]=!state.mgChecked[String(cd)];saveState();renderMg()}
+function toggleEatTag(key){state.eatChecked[key]=!state.eatChecked[key];saveState();renderEat()}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-mgday]");
+  if(t) toggleMg(parseInt(t.dataset.mgday));
+});
+
+// ── EAT ──
+function renderEat(){
+  if(!state.day){
+    document.getElementById("sub-tabs").innerHTML="";
+    document.getElementById("eat-body").innerHTML='<div style="padding:60px 0;text-align:center;color:#a09080;font-family:DM Serif Display,serif;font-style:italic;font-size:1rem">Najpierw wybierz datę cyklu</div>';
+    return;
+  }
+  const p=PHASES[state.phaseKey];
+  const a=p.accent;
+  const showMg=state.phaseKey==="luteal";
+  if(state.eatTab==="mg"&&!showMg) state.eatTab="eat";
+
+  const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+  document.getElementById("eat-intro").innerHTML=
+    '<div style="border-radius:14px;padding:14px 16px;background:'+p.grad+'">'+
+    '<div style="font-family:\'DM Serif Display\',serif;font-size:1rem;color:#fff;margin-bottom:5px">'+cap(p.meals2.title)+'</div>'+
+    '<div style="font-size:0.78rem;color:rgba(255,255,255,0.88);line-height:1.7">'+cap(p.meals2.desc)+'</div>'+
+    '</div>'+
+    (p.snacks&&p.snacks.length?
+      '<div style="background:#fff;border-radius:14px;padding:13px 16px;margin-top:10px;box-shadow:0 1px 8px rgba(0,0,0,0.05)">'+
+      '<div style="font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;color:'+a+';margin-bottom:10px;font-weight:600">🍬 do wypróbowania</div>'+
+      p.snacks.map(s=>
+        '<div style="font-size:0.88rem;color:#5a4e3a;line-height:1.6;padding:5px 0;border-bottom:1px solid #f0ebe4">'+s+'</div>'
+      ).join('')+
+      '</div>'
+    :'');
+
+  const tabs=[{k:"eat",l:"🍲 Jedz"},{k:"avoid",l:"❌ Unikaj"},{k:"tips",l:"☝️ Wskazówki"},{k:"meals",l:"👩‍🍳 Posiłki"},...(showMg?[{k:"mg",l:"💊 Magnez"}]:[])];  document.getElementById("sub-tabs").innerHTML=tabs.map(t=>
+    '<button class="stab'+(t.k===state.eatTab?" active":"")+
+    '" style="'+(t.k===state.eatTab?"background:"+a+";border-color:"+a:"")+
+    '" onclick="switchEatTab(\''+t.k+'\')">'+t.l+'</button>'
+  ).join("");
+
+  let html="";
+  if(state.eatTab==="eat"){
+    html=p.eatGroups.map(g=>
+      '<div class="group-block">'+
+      '<div class="group-hd"><span class="group-hd-ico">'+g.ico+'</span><span class="group-hd-txt">'+g.title+'</span></div>'+
+      '<div class="tag-row\">'+g.items.flatMap(i=>i.split(/,(?![^(]*\))/).map(s=>s.trim())).map(i=>{
+        const ci=i.charAt(0).toUpperCase()+i.slice(1);
+        const key=state.phaseKey+":"+ci;
+        const checked=!!state.eatChecked[key];
+        return '<span class="tag eat-tag'+(checked?" eat-tag-done":"")+'" '+
+          'style="background:'+(checked?a:''+a+'18')+';color:'+(checked?"#fff":a)+';border:1.5px solid '+(checked?a:"transparent")+';cursor:pointer" '+
+          'onclick="toggleEatTag(\''+key+'\')">'+(checked?"✓ ":"")+ci+'</span>';
+      }).join("")+'</div>'+
+      '</div>'
+    ).join("");
+  } else if(state.eatTab==="tips"){
+    html=p.tips.map(t=>
+      '<div class="tip-block" style="border-left-color:'+a+'">'+
+      '<span class="tip-block-title" style="color:'+a+'">'+t.icon+' '+t.title+'</span>'+
+      t.text+'</div>'
+    ).join("");
+  } else if(state.eatTab==="avoid"){
+    html='<div class="group-block">'+
+      '<div class="group-hd"><span class="group-hd-ico">❌</span><span class="group-hd-txt">Ogranicz lub unikaj</span></div>'+
+      '<div class="tag-row">'+p.avoid.map(i=>{
+        const lbl=i.label.charAt(0).toUpperCase()+i.label.slice(1);
+        return '<span class="tag" style="background:#f0e8e8;color:#a04050">'+i.ico+' '+lbl+'</span>';
+      }).join("")+'</div>'+
+      '</div>';
+  } else if(state.eatTab==="meals"){
+    const m2=p.meals2;
+    const types=["Sniadanie","Obiad","Kolacja","Przekaska"];
+    const cards=types.map(type=>{
+      const a1=p.meals.find(m=>m.type===type);
+      const a2=m2.items.find(m=>m.type===type);
+      if(!a1&&!a2) return "";
+      const ico=a1?a1.ico:(a2?a2.ico:"🍽");
+      const buildRow=(m)=>
+        '<div>'+
+        '<div style="font-size:0.82rem;font-weight:600;color:#3a3020;margin-bottom:2px">'+cap(m.name)+'</div>'+
+        '<div class="meal-desc" style="margin:0">'+cap(m.desc)+'</div>'+
+        '</div>';
+      const lubDivider=
+        '<div style="display:flex;align-items:center;gap:8px;margin:10px 0">'+
+        '<div style="flex:1;height:1px;background:#f0ebe3"></div>'+
+        '<div style="font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;color:#c8b898;font-weight:500">lub</div>'+
+        '<div style="flex:1;height:1px;background:#f0ebe3"></div>'+
+        '</div>';
+      return '<div class="meal-card" style="border-top-color:'+a+'">'+
+        '<div class="meal-hdr" style="margin-bottom:10px">'+
+        '<span class="meal-ico-el">'+ico+'</span>'+
+        '<div class="meal-meta">'+
+        '<div class="meal-type" style="color:'+a+'">'+cap(type)+'</div>'+
+        '</div></div>'+
+        (a1?buildRow(a1):'')+
+        (a1&&a2?lubDivider:'')+
+        (a2?buildRow(a2):'')+
+        '</div>';
+    }).join("");
+    const note=
+      '<div style="font-size:0.8rem;color:#6a5a48;line-height:1.65;font-style:italic;padding:12px 4px 0">'+
+      m2.note+'</div>';
+    html=cards;
+  } else if(state.eatTab==="mg"){
+    html=
+      '<div class="mg-info-card"><span class="mg-info-title">🧬 Dlaczego magnez?</span>Niedobory magnezu nasilają objawy PMS — wahania nastroju, skurcze, zatrzymanie wody. Suplementuj od 21 dnia cyklu.</div>'+
+      '<div class="mg-info-card"><span class="mg-info-title">🌿 Naturalne źródła</span>🍫 Kakao · 🥜 Orzechy · 🌾 Kasza · 🫘 Strączki · 🌿 Mięta · 🥦 Zielone warzywa</div>'+
+      '<div class="mg-info-card"><span class="mg-info-title">💊 Suplementacja</span>Magnez bis-glicynian lub cytrynian — lepiej wchłaniane. Pora: wieczorem przed snem. Dawka: 200–400 mg dziennie.</div>';
+  }
+  document.getElementById("eat-body").innerHTML=html;
+}
+function switchEatTab(k){state.eatTab=k;renderEat()}
+function switchMenu(i){state.menuIdx=i;renderEat()}
+
+// ── PHASE SCREEN ──
+function renderPhaseScreen(){
+  if(!state.day){
+    document.getElementById("phase-float").innerHTML='';
+    document.getElementById("phase-content").innerHTML='<div style="padding:40px 0;text-align:center;color:#a09080;font-family:DM Serif Display,serif;font-style:italic;font-size:1rem">Najpierw wybierz datę cyklu</div>';
+    return;
+  }
+  const p=PHASES[state.phaseKey];
+  const a=p.accent;
+
+  document.getElementById("phase-hero-bg").style.background=p.grad;
+  document.getElementById("phase-float").innerHTML=
+    '<div class="ph-ico-wrap"><div class="ph-ico">'+p.ico+'</div></div>'+
+    '<div class="ph-eyebrow">Aktualna faza</div>'+
+    '<div class="ph-name" style="color:'+a+'">Faza '+p.name+'</div>'+
+    '<div class="ph-sub">'+p.days+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">'+
+    '<div style="background:#f8f5f0;border-radius:10px;padding:10px 12px">'+
+    '<div style="font-size:0.5rem;letter-spacing:0.18em;text-transform:uppercase;color:#a09080;margin-bottom:3px">Pora roku</div>'+
+    '<div style="font-size:0.88rem;font-weight:500;color:#3a3020">'+p.season+'</div>'+
+    '</div>'+
+    '<div style="background:#f8f5f0;border-radius:10px;padding:10px 12px">'+
+    '<div style="font-size:0.5rem;letter-spacing:0.18em;text-transform:uppercase;color:#a09080;margin-bottom:3px">Archetyp</div>'+
+    '<div style="font-size:0.88rem;font-weight:500;color:'+a+'">'+p.archetype+'</div>'+
+    '</div>'+
+    '<div style="grid-column:1/-1;background:#f8f5f0;border-radius:10px;padding:10px 12px">'+
+    '<div style="font-size:0.5rem;letter-spacing:0.18em;text-transform:uppercase;color:#a09080;margin-bottom:4px">Temat fazy</div>'+
+    '<div style="font-family:\'DM Serif Display\',serif;font-style:italic;font-size:0.88rem;color:'+a+';line-height:1.5">'+p.themes+'</div>'+
+    '</div>'+
+    '</div>';
+
+  // gradient band outside the card — removed
+
+  const lsOrder=[
+    {key:"Nastrój",    lbl:"🙂 Nastrój"},
+    {key:"Prywatnie",  lbl:"🌸 Prywatnie"},
+    {key:"Ruch",       lbl:"🏃 Ruch"},
+    {key:"Życie społeczne", lbl:"🤝 Życie społ."},
+    {key:"Praca",      lbl:"💼 Praca"}
+  ];
+
+  const LS_CONTENT={
+    "Nastrój":{
+      intro:"Cykl menstruacyjny wpływa nie tylko na ciało, ale również na emocje, koncentrację i sposób myślenia. Zamiast walczyć z tą zmiennością, można potraktować ją jak naturalny rytm, który podpowiada, czego w danym momencie najbardziej potrzebujemy.",
+      phases:{
+        menstrual:{title:"Cisza i refleksja",body:"Podczas miesiączki poziom energii naturalnie spada — estrogen i progesteron są na najniższym poziomie. Organizm skupia się na regeneracji, dlatego możesz odczuwać większą potrzebę spokoju, snu i samotności. Jednocześnie wiele kobiet doświadcza wtedy większej jasności emocjonalnej. To dobry moment, aby zatrzymać się i spojrzeć na miniony miesiąc z dystansu.\n\nTo dobry czas na spokojną muzykę, chwilę ciszy czy pisanie w dzienniku — pomagają uporządkować myśli i emocje.",keys:["Zwolnij i daj sobie przestrzeń na odpoczynek","Poświęć czas na refleksję i podsumowanie miesiąca","Unikaj nadmiaru bodźców i intensywnego tempa"]},
+        follicular:{title:"Ciekawość i świeża energia",body:"Po miesiączce poziom estrogenu zaczyna rosnąć, a wraz z nim pojawia się większa jasność umysłu i optymizm. Wiele kobiet odczuwa wtedy przypływ kreatywności i chęci działania. To moment, w którym łatwiej planować, tworzyć i podejmować nowe inicjatywy.\n\nTo dobry czas na naukę nowych rzeczy, burze mózgów czy rozwijanie pomysłów.",keys:["Wykorzystaj kreatywność i ciekawość świata","Planuj nowe projekty i cele","Szukaj inspiracji i nowych doświadczeń"]},
+        ovulatory:{title:"Pewność siebie i otwartość",body:"Owulacja to moment szczytowej energii hormonalnej. Wzrasta poziom estrogenu i testosteronu, co przynosi większą pewność siebie i łatwość w komunikacji. Wiele kobiet zauważa, że rozmowy i wystąpienia przychodzą im znacznie łatwiej.\n\nTo idealny czas na budowanie relacji, dzielenie się pomysłami i prowadzenie ważnych rozmów.",keys:["Wykorzystaj energię społeczną","Dziel się pomysłami i komunikuj swoje potrzeby","Buduj relacje i współpracę"]},
+        luteal:{title:"Spokój i uziemienie",body:"Po owulacji energia zaczyna stopniowo spadać. Progesteron wprowadza spokojniejszą energię, ale organizm może szybciej się męczyć. Wiele kobiet zaczyna wtedy bardziej potrzebować rutyny, porządku i komfortu.\n\nTo dobry moment na zwolnienie tempa i zadbanie o regenerację emocjonalną.",keys:["Ogranicz nadmiar obowiązków","Zadbaj o spokój i stabilność","Skup się na regeneracji i odpoczynku"]}
+      }
+    },
+    "Prywatnie":{
+      intro:"Synchronizacja cyklu pomaga lepiej dopasować codzienne tempo życia do potrzeb organizmu. Każda faza przynosi inne potrzeby — od intensywności i kreatywności, przez ekspansję, aż po wyciszenie i regenerację.",
+      phases:{
+        menstrual:{title:"Odpoczynek i odnowa",body:"Miesiączka to naturalny moment regeneracji organizmu. Warto postawić na spokój i zadbać o siebie.",practices:["Wyśpij się i poruszaj się powoli","Pij ziołową herbatę lub bulion kostny, aby się rozgrzać i odżywić","Prowadź dziennik — zastanów się, co działa w Twoim życiu","Wybierz się na lekki spacer, aby poprawić krążenie i nastrój"],keys:["Odpoczynek i regeneracja","Refleksja nad minionym miesiącem","Delikatne rytuały dla ciała"]},
+        follicular:{title:"Kreatywność i wzrost",body:"Energia zaczyna rosnąć i pojawia się większa chęć działania. To świetny moment na nowe inicjatywy i odkrywanie.",practices:["Wypróbuj nową klasę, przepis lub hobby","Jedz świeże produkty bogate w witaminy i błonnik","Ustal nowe cele lub zaplanuj swój miesiąc","Bierz udział w aktywnościach społecznych, które Cię ekscytują"],keys:["Rozwój i planowanie","Nowe doświadczenia","Eksplorowanie możliwości"]},
+        ovulatory:{title:"Połączenie i pewność siebie",body:"To najbardziej energetyczna i towarzyska część cyklu. Twoja ekspresja jest naturalnie wzmocniona.",practices:["Zaplanuj ważne spotkania lub rozmowy","Wyrażaj siebie twórczo lub poprzez ruch","Ćwicz w grupie lub bierz udział w zajęciach towarzyskich","Spędzaj czas z ludźmi, którzy Cię motywują"],keys:["Relacje i komunikacja","Twórcza ekspresja","Współpraca"]},
+        luteal:{title:"Uziemienie i komfort",body:"Organizm zaczyna przygotowywać się do kolejnego cyklu. Warto zwolnić i zadbać o przestrzeń wokół siebie.",practices:["Uprość swój harmonogram i ustal granice","Gotuj pożywne posiłki i praktykuj świadome jedzenie","Zorganizuj swoją przestrzeń lub przygotuj się na kolejny cykl","Częściej odpoczywaj i kładź się spać wcześniej"],keys:["Spokój i porządkowanie","Granice i rutyna","Regeneracja"]}
+      }
+    },
+    "Ruch":{
+      intro:"Twoja energia fizyczna zmienia się w trakcie cyklu. Dopasowanie treningów do poszczególnych faz pomaga uniknąć przemęczenia i sprawia, że ruch wspiera organizm zamiast go przeciążać.",
+      phases:{
+        menstrual:{title:"Regeneracja",body:"Podczas miesiączki organizm potrzebuje odpoczynku i delikatnego ruchu. Intensywne treningi mogą zwiększać zmęczenie lub stan zapalny.",activities:["Spokojne spacery","Joga regeneracyjna","Delikatne rozciąganie","Ćwiczenia mobilności"],keys:["Traktuj ruch jako wsparcie regeneracji","Skup się na rozluźnieniu ciała","Nie zmuszaj się do intensywnego wysiłku"]},
+        follicular:{title:"Budowanie siły",body:"Kiedy estrogen rośnie, zwiększa się energia i zdolność regeneracji mięśni. To świetny moment na intensywniejsze treningi i rozwijanie formy.",activities:["Trening siłowy","HIIT","Zajęcia grupowe","Treningi oparte na nauce nowych umiejętności"],keys:["Zwiększaj intensywność treningów","Testuj nowe aktywności","Buduj siłę i wytrzymałość"]},
+        ovulatory:{title:"Moc i wydajność",body:"Owulacja często przynosi najwyższy poziom energii fizycznej. To moment, kiedy ciało jest najbardziej wydajne i skoordynowane.",activities:["Intensywne cardio","Trening obwodowy","Sporty zespołowe","Taniec lub dynamiczne zajęcia fitness"],keys:["Wykorzystaj szczyt energii","Podejmuj wyzwania treningowe","Pamiętaj o regeneracji i nawodnieniu"]},
+        luteal:{title:"Stabilność",body:"Po owulacji energia zaczyna spadać, a regeneracja trwa dłużej. Warto postawić na spokojniejszy, bardziej stabilny ruch.",activities:["Pilates","Barre","Spokojne cardio","Lekki trening siłowy"],keys:["Zwolnij tempo treningów","Skup się na regularności","Zadbaj o regenerację"]}
+      }
+    },
+    "Życie społeczne":{
+      intro:"Energia społeczna również zmienia się w trakcie cyklu menstruacyjnego. Są momenty, w których naturalnie mamy większą ochotę na spotkania, a także takie, gdy potrzebujemy czasu tylko dla siebie. Synchronizowanie życia społecznego z cyklem może pomóc uniknąć przemęczenia i sprawić, że relacje będą bardziej satysfakcjonujące.",
+      phases:{
+        menstrual:{title:"Cisza i kameralność",body:"Podczas miesiączki wiele kobiet odczuwa potrzebę większego spokoju i wycofania się z intensywnego życia towarzyskiego. To naturalne — organizm skupia się na regeneracji. Kameralne spotkania i rozmowy z bliską osobą mogą być bardziej wspierające niż duże wydarzenia.",activities:["Spokojne spotkanie z bliską osobą","Rozmowy jeden na jeden","Spacer z przyjaciółką","Wieczór w domu z kimś bliskim"],keys:["Kameralność i spokój","Mniej bodźców społecznych","Jakość, nie ilość kontaktów"]},
+        follicular:{title:"Otwartość i nowe znajomości",body:"Po miesiączce energia społeczna zaczyna rosnąć. Pojawia się większa ciekawość ludzi i świata. To świetny moment na aktywności, które wprowadzają świeżość — warsztaty, nowe zajęcia, spotkania z inspirującymi osobami.",activities:["Warsztaty i zajęcia grupowe","Wydarzenia rozwojowe lub kreatywne","Poznawanie nowych osób","Spotkania z przyjaciółmi"],keys:["Otwartość na nowe znajomości","Spontaniczność","Ciekawość ludzi"]},
+        ovulatory:{title:"Relacje i współpraca",body:"Owulacja to najbardziej towarzyska część cyklu. Poziom estrogenu i testosteronu jest wysoki, co zwiększa pewność siebie i ułatwia komunikację. Rozmowy przebiegają płynniej, a budowanie relacji staje się naturalne.",activities:["Spotkania towarzyskie","Wydarzenia networkingowe","Zajęcia grupowe lub treningi w grupie","Wspólne wyjścia i wydarzenia kulturalne"],keys:["Relacje i komunikacja","Budowanie kontaktów","Widoczność i charyzma"]},
+        luteal:{title:"Bliskość i selektywność",body:"Pod koniec cyklu energia społeczna zaczyna się zmniejszać. Wiele kobiet woli spędzać czas w mniejszym gronie. To dobry moment na relacje z najbliższymi — partnerem, rodziną czy przyjaciółmi.",activities:["Spotkania z najbliższymi","Wspólne gotowanie lub kolacja w domu","Spokojny wieczór filmowy","Rozmowy z przyjaciółmi"],keys:["Bliskość i intymność","Spokojne tempo","Mniejsza liczba spotkań"]}
+      }
+    },
+    "Praca":{
+      intro:"Cykl menstruacyjny wpływa także na koncentrację i produktywność. Planowanie zadań zgodnie z naturalnymi szczytami energii może znacząco ułatwić pracę i zmniejszyć poczucie przeciążenia.",
+      phases:{
+        menstrual:{title:"Refleksja i strategia",hours:"10:00–13:00",body:"W tej fazie energia jest niższa, ale pojawia się większa zdolność do refleksji. To dobry moment na analizę projektów, planowanie i ocenę postępów. Zadania wymagające spokojnego myślenia mogą być wtedy łatwiejsze niż intensywna praca zespołowa.",tasks:["Refleksja i planowanie","Przegląd projektów","Myślenie strategiczne"],keys:["Mniej spotkań","Spokojna, skupiona praca","Koncentracja na jakości, nie ilości"]},
+        follicular:{title:"Kreatywność i inicjatywa",hours:"8:00–12:00",body:"Wraz ze wzrostem estrogenu rośnie energia i jasność umysłu. To idealny czas na rozpoczynanie nowych projektów, burze mózgów i rozwiązywanie problemów. Kreatywność jest wtedy naturalnie wyższa.",tasks:["Burze mózgów","Rozpoczynanie nowych projektów","Rozwiązywanie problemów"],keys:["Kreatywność i inicjatywa","Planowanie","Nowe wyzwania"]},
+        ovulatory:{title:"Komunikacja i współpraca",hours:"9:00–14:00",body:"Owulacja sprzyja pracy zespołowej, prezentacjom i spotkaniom. Pewność siebie i łatwość komunikacji pomagają przekazywać pomysły i prowadzić rozmowy. To moment na wystąpienia i budowanie relacji w pracy.",tasks:["Prezentacje","Spotkania zespołowe","Negocjacje i komunikacja"],keys:["Współpraca","Komunikacja","Widoczność w pracy"]},
+        luteal:{title:"Koncentracja i dopracowanie",hours:"13:00–17:00",body:"Pod koniec cyklu pojawia się większa zdolność do skupienia i analizy. To dobry moment na edytowanie, organizowanie projektów i dopracowywanie szczegółów. Choć energia może być niższa, dokładność często jest wyższa.",tasks:["Edytowanie","Analizowanie","Dopracowywanie szczegółów projektów"],keys:["Koncentracja i dokładność","Kończenie zadań","Praca analityczna"]}
+      }
+    }
+  };
+
+  function renderLsTab(tabKey, phaseKey, accent, grad, ico){
+    const lc=LS_CONTENT[tabKey];
+    if(!lc) return '';
+    const ph=lc.phases[phaseKey];
+    if(!ph) return '';
+
+    let html=
+      '<div style="background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 1px 8px rgba(0,0,0,0.05);margin-bottom:12px;font-size:0.82rem;color:#5a4e3a;line-height:1.75">'+
+      lc.intro+'</div>';
+
+    // PRACA: godziny na górze — jaśniejsze tło z kolorem fazy
+    if(ph.hours){
+      html+=
+        '<div style="border-radius:14px;padding:14px 18px;background:'+accent+'18;border:1px solid '+accent+'30;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">'+
+        '<div style="font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;color:'+accent+';font-weight:600">⏰ Najlepsze godziny</div>'+
+        '<div style="font-family:\'DM Serif Display\',serif;font-size:1.6rem;color:'+accent+'">'+ph.hours+'</div>'+
+        '</div>';
+    }
+
+    // najważniejsze na gradiencie
+    if(ph.keys&&ph.keys.length){
+      html+=
+        '<div style="border-radius:14px;padding:14px 16px;background:'+grad+';margin-bottom:12px">'+
+        '<div style="font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:10px;font-weight:600">Najważniejsze w tej fazie</div>'+
+        ph.keys.map(k=>'<div style="display:flex;align-items:flex-start;gap:10px;padding:5px 0;font-size:0.82rem;color:rgba(255,255,255,0.92);line-height:1.5">'+
+          '<span style="flex-shrink:0">'+p.ico+'</span>'+k+'</div>'
+        ).join('')+
+        '</div>';
+    }
+
+    // opis — w Nastrój wyróżniamy zdania zaczynające się od "To dobry" / "To idealny" / "To moment"
+    if(ph.body){
+      const paras=ph.body.split('\n\n');
+      const isNastrojOrSocial=(tabKey==='Nastrój'||tabKey==='Życie społeczne'||tabKey==='Prywatnie');
+
+      // group consecutive non-highlight paras together, highlight paras get their own card
+      const groups=[];
+      let buf=[];
+      paras.forEach(para=>{
+        const isHighlight=isNastrojOrSocial && /^To (dobry|idealny|moment|najbardziej)/.test(para);
+        if(isHighlight){
+          if(buf.length) { groups.push({type:'text',paras:[...buf]}); buf=[]; }
+          groups.push({type:'highlight',text:para});
+        } else {
+          buf.push(para);
+        }
+      });
+      if(buf.length) groups.push({type:'text',paras:buf});
+
+      groups.forEach(g=>{
+        if(g.type==='text'){
+          html+='<div style="background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 1px 8px rgba(0,0,0,0.05);margin-bottom:12px;font-size:0.82rem;color:#5a4e3a;line-height:1.75">'+
+            g.paras.join('<br><br>')+
+          '</div>';
+        } else {
+          html+='<div style="background:'+accent+'18;border:1px solid '+accent+'30;border-radius:14px;padding:12px 16px;margin-bottom:12px;font-size:0.82rem;color:'+accent+';line-height:1.7;font-style:italic">'+
+            g.text+
+          '</div>';
+        }
+      });
+    }
+
+    // lista aktywności / praktyk / zadań — jaśniejsze tło z kolorem fazy
+    const listItems=ph.activities||ph.practices||ph.tasks;
+    if(listItems){
+      const listTitle=ph.activities?'Najlepsze formy aktywności':ph.practices?'Dobre praktyki':'Najlepsze zadania';
+      html+=
+        '<div style="background:'+accent+'0e;border:1px solid '+accent+'22;border-radius:14px;padding:14px 16px;margin-bottom:12px">'+
+        '<div style="font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;color:'+accent+';margin-bottom:10px;font-weight:600">'+listTitle+'</div>'+
+        listItems.map(it=>'<div style="display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid '+accent+'18;font-size:0.82rem;color:#5a4e3a;line-height:1.5">'+
+          '<span style="color:'+accent+';flex-shrink:0;font-weight:700">•</span>'+it+'</div>'
+        ).join('')+
+        '</div>';
+    }
+
+    return html;
+  }
+  document.getElementById("phase-content").innerHTML=
+    '<div style="background:#fff;border-radius:14px;padding:15px 16px;box-shadow:0 1px 8px rgba(0,0,0,0.05);margin-bottom:10px;font-size:0.82rem;color:#5a4e3a;line-height:1.75">'+p.desc+'</div>'+
+    '<div style="border-radius:14px;padding:15px 18px;background:'+p.grad+';font-family:\'DM Serif Display\',serif;font-style:italic;font-size:1rem;color:rgba(255,255,255,0.92);line-height:1.7;text-align:center;margin-bottom:14px">'+
+    ''+p.ico+' '+p.affirmation+
+    '</div>'+
+    '<div class="sec-eyebrow">Hormony</div>'+
+    '<div class="hm-card">'+
+    '<div style="font-size:0.74rem;font-style:italic;color:'+a+';margin-bottom:12px">'+p.hormoneNote+'</div>'+
+    p.hormones.map(h=>
+      '<div class="hb" style="margin-bottom:9px">'+
+      '<span class="hb-name">'+h.n+'</span>'+
+      '<div class="hb-track"><div class="hb-fill" style="width:'+h.v+'%;background:'+h.c+'"></div></div>'+
+      '<span class="hb-pct">'+h.v+'%</span></div>'
+    ).join("")+
+    '</div>'+
+    '<div class="sec-eyebrow">Styl życia</div>'+
+    '<div class="sub-tabs" style="padding:0 0 10px;justify-content:space-between">'+
+    lsOrder.map(t=>
+      '<button class="stab'+(state.lsTab===t.key?" active":"")+'" '+
+      'style="flex:1;text-align:center;'+(state.lsTab===t.key?"background:"+a+";border-color:"+a:"")+'" '+
+      'onclick="state.lsTab=\''+t.key+'\';renderPhaseScreen()">'+t.lbl+'</button>'
+    ).join("")+
+    '</div>'+
+    renderLsTab(state.lsTab, state.phaseKey, a, p.grad, p.ico)+
+    '<div style="height:8px"></div>';
+}
+
+// ── ONBOARDING ──
+function onboardStart(){
+  const val=document.getElementById("ob-date").value;
+  if(!val) return;
+  state.startDate=val;
+  recalcDay(val);
+  saveState();
+  document.getElementById("dateInput").value=val;
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("screen-today").classList.add("active");
+  state.screen="today";
+  renderToday();
+  renderNav();
+}
+
+// ── DATE ──
+function recalcDay(dateStr){
+  if(!dateStr) return;
+  const parts=dateStr.split("-");
+  const start=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  start.setHours(0,0,0,0);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const diff=Math.floor((today-start)/86400000)+1;
+  if(diff<1){
+    // data w przyszłości — pokaż dzień 1
+    state.day=1;
+    state.phaseKey="menstrual";
+    return;
+  }
+  const newDay=((diff-1)%MAX_DAY)+1;  // zawsze 1–28, bezpieczne
+  const newPhase=getPhaseKey(newDay);
+  // resetuj eatChecked przy zmianie fazy
+  if(newPhase!==state.phaseKey) state.eatChecked={};
+  // resetuj mgChecked tylko gdy zaczyna się nowy cykl (wracamy do dnia 1)
+  const oldDay=state.day||0;
+  if(newDay<oldDay && newDay<=6 && oldDay>20) state.mgChecked={};
+  state.day=newDay;
+  state.phaseKey=newPhase;
+}
+
+document.getElementById("dateInput").max=new Date().toISOString().split("T")[0];
+document.getElementById("ob-date").max=new Date().toISOString().split("T")[0];
+
+document.getElementById("dateInput").addEventListener("change",function(){
+  const v=this.value;
+  if(!v){state.day=null;state.startDate="";saveState();return}
+  state.startDate=v;recalcDay(v);saveState();renderToday();renderNav();
+  if(state.screen==="eat") renderEat();
+  if(state.screen==="phase") renderPhaseScreen();
+});
+
+setInterval(()=>{
+  if(!state.startDate) return;
+  const old=state.day; recalcDay(state.startDate);
+  if(state.day!==old){renderToday();renderNav()}
+},60000);
+
+// ── INIT ──
+const saved=loadSaved();
+if(saved&&saved.startDate){
+  state.startDate=saved.startDate;
+  state.mgChecked=saved.mgChecked||{};
+  // eatChecked: odtwórz, recalcDay wyczyści jeśli faza się zmieniła
+  state.eatChecked=saved.eatChecked||{};
+  document.getElementById("dateInput").value=saved.startDate;
+  document.getElementById("ob-date").value=saved.startDate;
+  recalcDay(saved.startDate);
+  // skip onboarding
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("screen-today").classList.add("active");
+  state.screen="today";
+  renderToday();
+  renderNav();
+} else {
+  // show onboarding
+  renderNav();
+}
+
+window.addEventListener("load",()=>{
+  setTimeout(()=>{
+    const s=document.getElementById("splash");
+    s.classList.add("hide");
+    setTimeout(()=>s.style.display="none",700);
+  },5000);
+});
+</script>
+</body>
+</html>
