@@ -248,8 +248,8 @@
     .nb:hover{background:rgba(0,0,0,0.03)}
     .nb-ico{display:flex;align-items:center;justify-content:center;color:#c8b898;transition:color 0.2s}
     .nb.active .nb-ico{color:#1a1410}
-    .nb-lbl{font-size:0.54rem;letter-spacing:0.08em;text-transform:uppercase;color:#c8b898;font-weight:500}
-    .nb.active .nb-lbl{color:#1a1410}
+    .nb-center{border-radius:20px;padding:8px 18px;margin-top:-14px;transition:background 0.2s}
+    .nb-center.active{background:#9060c0;box-shadow:0 4px 16px rgba(144,96,192,0.4)}
   </style>
 </head>
 <body>
@@ -257,7 +257,7 @@
 <!-- SPLASH -->
 <div id="splash">
   <div class="spl-sym" id="spl-sym">♀</div>
-  <div class="spl-title">Cycle Sync</div>
+  <div class="spl-title" id="spl-title">Cycle Sync</div>
   <div class="spl-sub">Synchronizacja z cyklem</div>
   <div class="spl-dots">
     <div class="spl-dot" style="background:#c06070"></div>
@@ -294,8 +294,19 @@
       </div>
     </div>
     <div class="ob-form">
+      <label class="ob-form-lbl">Twoje imię</label>
+      <input type="text" id="ob-name" class="ob-date-input" placeholder="np. Ania" style="margin-bottom:12px"/>
       <label class="ob-form-lbl">Pierwszy dzień ostatniej miesiączki</label>
-      <input type="date" id="ob-date" class="ob-date-input"/>
+      <input type="date" id="ob-date" class="ob-date-input" style="margin-bottom:12px"/>
+      <label class="ob-form-lbl">Długość cyklu (dni)</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <button onclick="cycleLen=Math.max(21,cycleLen-1);document.getElementById('ob-cycle-val').textContent=cycleLen" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #d8cfc4;background:#fff;font-size:1.2rem;cursor:pointer;color:#6a5a48">−</button>
+        <div style="flex:1;text-align:center">
+          <span id="ob-cycle-val" style="font-family:'DM Serif Display',serif;font-size:1.8rem;color:#3a3020">28</span>
+          <span style="font-size:0.75rem;color:#a09080;margin-left:4px">dni</span>
+        </div>
+        <button onclick="cycleLen=Math.min(45,cycleLen+1);document.getElementById('ob-cycle-val').textContent=cycleLen" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #d8cfc4;background:#fff;font-size:1.2rem;cursor:pointer;color:#6a5a48">+</button>
+      </div>
       <button class="ob-btn" onclick="onboardStart()">Rozpocznij synchronizację →</button>
     </div>
   </div>
@@ -304,10 +315,15 @@
   <div class="screen" id="screen-today">
     <div class="hero-bg" id="hero-bg">
       <div class="hdr">
-        <span class="hdr-brand">Cycle Sync</span>
-        <div class="hdr-right">
-          <span class="hdr-lbl">Pierwszy dzień miesiączki</span>
-          <input type="date" id="dateInput"/>
+        <span class="hdr-brand" id="hdr-name">Cycle Sync</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button onclick="openSettings()" style="background:none;border:none;cursor:pointer;padding:2px;opacity:0.6">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="3"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>
+          </button>
+          <div class="hdr-right">
+            <span class="hdr-lbl">Pierwszy dzień miesiączki</span>
+            <input type="date" id="dateInput"/>
+          </div>
         </div>
       </div>
       <div class="hero-content">
@@ -397,7 +413,122 @@
     <div class="phase-content" id="phase-content"></div>
   </div>
 
+  <!-- ── HISTORIA ── -->
+  <div class="screen" id="screen-history">
+    <div style="padding:20px 16px 100px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:#3a3020">Historia cykli</div>
+        <button onclick="openCalendar()" style="display:flex;align-items:center;gap:6px;background:#f0eaf8;border:none;border-radius:20px;padding:7px 14px;cursor:pointer;color:#7a5090;font-size:0.8rem;font-weight:500;font-family:'DM Sans',sans-serif">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#7a5090" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><line x1="3" y1="8" x2="17" y2="8"/><line x1="7" y1="2" x2="7" y2="6"/><line x1="13" y1="2" x2="13" y2="6"/></svg>
+          Kalendarz
+        </button>
+      </div>
+      <div style="font-size:0.8rem;color:#a09080;margin-bottom:20px">Twoje poprzednie cykle</div>
+
+      <!-- Dodaj cykl -->
+      <div id="hist-add-btn" style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.06);cursor:pointer" onclick="toggleHistAdd()">
+        <div style="width:32px;height:32px;border-radius:50%;background:#f0eaf8;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">+</div>
+        <div style="font-size:0.85rem;color:#7a5090;font-weight:500">Dodaj poprzedni cykl</div>
+      </div>
+      <div id="hist-add-form" style="display:none;background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.06)">
+        <div style="font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:#a09080;margin-bottom:6px">Pierwszy dzień miesiączki</div>
+        <input type="date" id="hist-date-input" class="ob-date-input" style="margin-bottom:12px"/>
+        <div style="font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:#a09080;margin-bottom:6px">Długość cyklu (dni)</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <button onclick="histAddLen=Math.max(21,histAddLen-1);document.getElementById('hist-len-val').textContent=histAddLen" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #d8cfc4;background:#f8f5f0;font-size:1rem;cursor:pointer;color:#6a5a48">−</button>
+          <div style="flex:1;text-align:center"><span id="hist-len-val" style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:#3a3020">28</span><span style="font-size:0.7rem;color:#a09080;margin-left:4px">dni</span></div>
+          <button onclick="histAddLen=Math.min(45,histAddLen+1);document.getElementById('hist-len-val').textContent=histAddLen" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #d8cfc4;background:#f8f5f0;font-size:1rem;cursor:pointer;color:#6a5a48">+</button>
+        </div>
+        <button onclick="addCycleHistory()" style="width:100%;padding:12px;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;color:#fff;cursor:pointer;background:linear-gradient(135deg,#9060c0,#7040a0)">Dodaj</button>
+      </div>
+
+      <!-- Lista cykli -->
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
   <div class="bnav" id="bnav"></div>
+
+  <!-- ── KALENDARZ ── -->
+  <div id="cal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:300;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeCalendar()">
+    <div style="background:#f8f5f0;border-radius:24px 24px 0 0;padding:20px 16px 36px;width:100%;max-width:390px;max-height:90vh;overflow-y:auto;animation:slideUp 0.3s ease">
+      <!-- Nagłówek -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <button onclick="calPrevMonth()" style="background:none;border:none;font-size:1.2rem;color:#7a5090;cursor:pointer;padding:4px 10px">‹</button>
+        <div id="cal-title" style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:#3a3020"></div>
+        <button onclick="calNextMonth()" style="background:none;border:none;font-size:1.2rem;color:#7a5090;cursor:pointer;padding:4px 10px">›</button>
+        <button onclick="closeCalendar()" style="background:none;border:none;font-size:1.2rem;color:#a09080;cursor:pointer;margin-left:4px">✕</button>
+      </div>
+      <!-- Dni tygodnia -->
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">
+        <div style="text-align:center;font-size:0.6rem;color:#a09080;padding:4px 0">Pn</div>
+        <div style="text-align:center;font-size:0.6rem;color:#a09080;padding:4px 0">Wt</div>
+        <div style="text-align:center;font-size:0.6rem;color:#a09080;padding:4px 0">Śr</div>
+        <div style="text-align:center;font-size:0.6rem;color:#a09080;padding:4px 0">Cz</div>
+        <div style="text-align:center;font-size:0.6rem;color:#a09080;padding:4px 0">Pt</div>
+        <div style="text-align:center;font-size:0.6rem;color:#a09080;padding:4px 0">So</div>
+        <div style="text-align:center;font-size:0.6rem;color:#a09080;padding:4px 0">Nd</div>
+      </div>
+      <!-- Kratki dni -->
+      <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+      <!-- Legenda -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid #ece8e0">
+        <div style="display:flex;align-items:center;gap:4px;font-size:0.65rem;color:#a09080"><div style="width:10px;height:10px;border-radius:50%;background:#c06070"></div>Menstruacyjna</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:0.65rem;color:#a09080"><div style="width:10px;height:10px;border-radius:50%;background:#60b050"></div>Folikularna</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:0.65rem;color:#a09080"><div style="width:10px;height:10px;border-radius:50%;background:#e8b020"></div>Owulacyjna</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:0.65rem;color:#a09080"><div style="width:10px;height:10px;border-radius:50%;background:#9060c0"></div>Lutealna</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:0.65rem;color:#a09080"><div style="width:10px;height:10px;border-radius:2px;background:#9060c020;border:1.5px solid #9060c0"></div>Magnez</div>
+      </div>
+      <!-- Podgląd dnia -->
+      <div id="cal-day-detail" style="display:none;margin-top:14px;background:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,0.06)"></div>
+    </div>
+  </div>
+
+  <!-- ── TRACKER ── -->
+  <div class="screen" id="screen-tracker">
+    <div style="padding:20px 16px 100px">
+      <div style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:#3a3020;margin-bottom:4px">Tracker</div>
+      <div style="font-size:0.8rem;color:#a09080;margin-bottom:20px">Jak się czujesz w tej fazie?</div>
+      <div id="tracker-body"></div>
+    </div>
+  </div>
+
+  <!-- ── USTAWIENIA ── -->
+  <div id="settings-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeSettings()">
+    <div style="background:#f8f5f0;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:390px;animation:slideUp 0.3s ease">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div style="font-family:'DM Serif Display',serif;font-size:1.3rem;color:#3a3020">Ustawienia</div>
+        <button onclick="closeSettings()" style="background:none;border:none;font-size:1.4rem;color:#a09080;cursor:pointer">✕</button>
+      </div>
+      <label style="font-size:0.6rem;letter-spacing:0.22em;text-transform:uppercase;color:#a09080;display:block;margin-bottom:8px">Twoje imię</label>
+      <input type="text" id="set-name" class="ob-date-input" style="margin-bottom:18px" placeholder="np. Ania"/>
+      <label style="font-size:0.6rem;letter-spacing:0.22em;text-transform:uppercase;color:#a09080;display:block;margin-bottom:8px">Długość cyklu</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+        <button onclick="setLen=Math.max(21,setLen-1);document.getElementById('set-cycle-val').textContent=setLen" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #d8cfc4;background:#fff;font-size:1.2rem;cursor:pointer;color:#6a5a48">−</button>
+        <div style="flex:1;text-align:center">
+          <span id="set-cycle-val" style="font-family:'DM Serif Display',serif;font-size:1.8rem;color:#3a3020">28</span>
+          <span style="font-size:0.75rem;color:#a09080;margin-left:4px">dni</span>
+        </div>
+        <button onclick="setLen=Math.min(45,setLen+1);document.getElementById('set-cycle-val').textContent=setLen" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #d8cfc4;background:#fff;font-size:1.2rem;cursor:pointer;color:#6a5a48">+</button>
+      </div>
+      <label style="font-size:0.6rem;letter-spacing:0.22em;text-transform:uppercase;color:#a09080;display:block;margin-bottom:8px">Pierwszy dzień miesiączki</label>
+      <input type="date" id="set-date" class="ob-date-input" style="margin-bottom:20px"/>
+      <div style="height:1px;background:#ece8e0;margin-bottom:20px"></div>
+      <label style="font-size:0.6rem;letter-spacing:0.22em;text-transform:uppercase;color:#a09080;display:block;margin-bottom:8px">💊 Przypomnienie o magnez</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:0.82rem;color:#5a4e3a">Przypominaj w dni suplementacji</div>
+        <div id="rem-toggle" onclick="toggleReminder()" style="width:44px;height:24px;border-radius:12px;cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0">
+          <div id="rem-knob" style="position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.2s"></div>
+        </div>
+      </div>
+      <div id="rem-time-row" style="display:none;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div style="font-size:0.82rem;color:#5a4e3a">Godzina przypomnienia</div>
+        <input type="time" id="set-reminder-time" style="border:1.5px solid #d8cfc4;border-radius:10px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:#3a3020;background:#fff"/>
+      </div>
+      <div id="rem-note" style="font-size:0.72rem;color:#a09080;margin-bottom:24px;display:none">Aplikacja poprosi o zgodę na powiadomienia przy pierwszym zapisie.</div>
+      <button onclick="saveSettings()" style="width:100%;padding:14px;border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;color:#fff;cursor:pointer;background:linear-gradient(135deg,#9060c0,#7040a0)">Zapisz zmiany</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -677,16 +808,44 @@ const PHASE_ORDER=["menstrual","follicular","ovulatory","luteal"];
 const NAV_ICONS={
   today:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><line x1="10" y1="6" x2="10" y2="10"/><line x1="10" y1="10" x2="13" y2="12"/></svg>',
   eat:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M7 3v5a3 3 0 0 0 6 0V3"/><line x1="10" y1="11" x2="10" y2="17"/></svg>',
-  phase:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="8" r="4"/><line x1="10" y1="12" x2="10" y2="17"/><line x1="7" y1="17" x2="13" y2="17"/></svg>'
+  phase:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="8" r="4"/><line x1="10" y1="12" x2="10" y2="17"/><line x1="7" y1="17" x2="13" y2="17"/></svg>',
+  history:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><line x1="3" y1="8" x2="17" y2="8"/><line x1="7" y1="2" x2="7" y2="6"/><line x1="13" y1="2" x2="13" y2="6"/></svg>',
+  tracker:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 14 Q7 8 10 10 Q13 12 16 5"/><circle cx="10" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>'
 };
-const NAV=[{key:"today",lbl:"Dziś"},{key:"eat",lbl:"Dieta"},{key:"phase",lbl:"Faza"}];
+const NAV=[{key:"eat",lbl:"Dieta"},{key:"tracker",lbl:"Tracker"},{key:"today",lbl:"Dziś",center:true},{key:"phase",lbl:"Faza"},{key:"history",lbl:"Historia"}];
 
-let state={day:null,phaseKey:"menstrual",screen:"today",eatTab:"eat",lsTab:"Nastrój",menuIdx:0,startDate:"",mgChecked:{},eatChecked:{}};
+let cycleLen=28; // zmienna onboardingu
+let setLen=28;   // zmienna modala ustawień
+let histAddLen=28; // zmienna formularza historii
+
+let state={day:null,phaseKey:"menstrual",screen:"today",eatTab:"eat",lsTab:"Nastrój",menuIdx:0,startDate:"",mgChecked:{},eatChecked:{},name:"",cycleLen:28,cycleHistory:[],trackEntries:{},reminderTime:"20:00",reminderEnabled:false};
 
 function loadSaved(){try{const s=localStorage.getItem("cs3");return s?JSON.parse(s):null}catch(e){return null}}
-function saveState(){try{localStorage.setItem("cs3",JSON.stringify({startDate:state.startDate,mgChecked:state.mgChecked,eatChecked:state.eatChecked}))}catch(e){}}
+function saveState(){try{localStorage.setItem("cs3",JSON.stringify({startDate:state.startDate,mgChecked:state.mgChecked,eatChecked:state.eatChecked,name:state.name,cycleLen:state.cycleLen,cycleHistory:state.cycleHistory,trackEntries:state.trackEntries,reminderTime:state.reminderTime,reminderEnabled:state.reminderEnabled}))}catch(e){}}
 
-function getPhaseKey(d){if(d<=6)return"menstrual";if(d<=12)return"follicular";if(d<=16)return"ovulatory";return"luteal"}
+// Oblicza granice faz proporcjonalnie do długości cyklu
+// Standardowe proporcje: menstrual 6/28, follicular 6/28, ovulatory 4/28, luteal 12/28
+function getPhaseBounds(cl){
+  cl=cl||28;
+  const m=Math.round(cl*6/28);
+  const f=Math.round(cl*6/28);
+  const o=Math.round(cl*4/28);
+  const l=cl-m-f-o;
+  return {
+    menstrual:[1,m],
+    follicular:[m+1,m+f],
+    ovulatory:[m+f+1,m+f+o],
+    luteal:[m+f+o+1,cl]
+  };
+}
+
+function getPhaseKey(d,cl){
+  const b=getPhaseBounds(cl||state.cycleLen);
+  if(d<=b.menstrual[1]) return"menstrual";
+  if(d<=b.follicular[1]) return"follicular";
+  if(d<=b.ovulatory[1]) return"ovulatory";
+  return"luteal";
+}
 function nextPhaseKey(k){const i=PHASE_ORDER.indexOf(k);return PHASE_ORDER[(i+1)%4]}
 
 function formatDate(dateStr,extraDays){
@@ -701,9 +860,15 @@ function renderNav(){
   const a=state.day?PHASES[state.phaseKey].accent:"#9060c0";
   document.getElementById("bnav").innerHTML=NAV.map(n=>{
     const isActive=n.key===state.screen;
+    if(n.center){
+      return '<button class="nb nb-center'+(isActive?" active":"")+'" onclick="switchScreen(\''+n.key+'\')" style="background:'+(isActive?a:'transparent')+';'+(isActive?'box-shadow:0 4px 16px '+a+'66':'')+'">'+
+        '<span class="nb-ico" style="color:'+(isActive?'#fff':'#c8b898')+'">'+NAV_ICONS[n.key]+'</span>'+
+        '<span class="nb-lbl" style="color:'+(isActive?'#fff':'#c8b898')+'">'+n.lbl+'</span>'+
+        '</button>';
+    }
     return '<button class="nb'+(isActive?" active":"")+'" onclick="switchScreen(\''+n.key+'\')" style="'+(isActive?"--phase-color:"+a:"")+'">'+
-    '<span class="nb-ico" style="'+(isActive?"color:"+a:"")+'">'+NAV_ICONS[n.key]+'</span>'+
-    '<span class="nb-lbl" style="'+(isActive?"color:"+a:"")+'">'+n.lbl+'</span></button>';
+      '<span class="nb-ico" style="'+(isActive?"color:"+a:"")+'">'+NAV_ICONS[n.key]+'</span>'+
+      '<span class="nb-lbl" style="'+(isActive?"color:"+a:"")+'">'+n.lbl+'</span></button>';
   }).join("");
 }
 
@@ -714,6 +879,118 @@ function switchScreen(key){
   renderNav();
   if(key==="eat") renderEat();
   if(key==="phase") renderPhaseScreen();
+  if(key==="history") renderHistory();
+  if(key==="tracker") renderTracker();
+}
+
+// ── HISTORIA ──
+function toggleHistAdd(){
+  const f=document.getElementById("hist-add-form");
+  f.style.display=f.style.display==="none"?"block":"none";
+}
+
+function addCycleHistory(){
+  const dateVal=document.getElementById("hist-date-input").value;
+  if(!dateVal) return;
+  // sprawdź duplikat
+  if(state.cycleHistory.some(c=>c.startDate===dateVal)) return;
+  state.cycleHistory.push({startDate:dateVal,cycleLen:histAddLen});
+  state.cycleHistory.sort((a,b)=>b.startDate.localeCompare(a.startDate));
+  saveState();
+  document.getElementById("hist-add-form").style.display="none";
+  document.getElementById("hist-date-input").value="";
+  renderHistory();
+}
+
+function deleteCycleHistory(idx){
+  state.cycleHistory.splice(idx,1);
+  saveState();
+  renderHistory();
+}
+
+function renderHistory(){
+  const phaseColors={menstrual:"#c06070",follicular:"#60b050",ovulatory:"#e8b020",luteal:"#9060c0"};
+  const DAYS_PL=["niedz.","pon.","wt.","śr.","czw.","pt.","sob."];
+  const MONTHS_FULL=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+
+  // bieżący cykl zawsze na górze
+  const allCycles=[];
+  if(state.startDate){
+    allCycles.push({startDate:state.startDate,cycleLen:state.cycleLen,current:true});
+  }
+  state.cycleHistory.forEach(c=>allCycles.push(c));
+
+  if(allCycles.length===0){
+    document.getElementById("hist-list").innerHTML=
+      '<div style="text-align:center;padding:40px 0;color:#a09080;font-family:\'DM Serif Display\',serif;font-style:italic">Brak zapisanych cykli</div>';
+    return;
+  }
+
+  // statystyki
+  const lens=allCycles.map(c=>c.cycleLen||28);
+  const avg=Math.round(lens.reduce((a,b)=>a+b,0)/lens.length);
+  const minL=Math.min(...lens), maxL=Math.max(...lens);
+
+  let statsHtml='';
+  if(allCycles.length>1){
+    statsHtml=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      <div style="background:#fff;border-radius:14px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
+        <div style="font-family:'DM Serif Display',serif;font-size:1.4rem;color:#9060c0">${avg}</div>
+        <div style="font-size:0.65rem;color:#a09080;margin-top:2px">śr. dni</div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
+        <div style="font-family:'DM Serif Display',serif;font-size:1.4rem;color:#9060c0">${minL}</div>
+        <div style="font-size:0.65rem;color:#a09080;margin-top:2px">najkrótszy</div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
+        <div style="font-family:'DM Serif Display',serif;font-size:1.4rem;color:#9060c0">${maxL}</div>
+        <div style="font-size:0.65rem;color:#a09080;margin-top:2px">najdłuższy</div>
+      </div>
+    </div>`;
+  }
+
+  const cardsHtml=allCycles.map((c,idx)=>{
+    const cl=c.cycleLen||28;
+    const parts=c.startDate.split("-");
+    const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+    const dateLabel=d.getDate()+" "+MONTHS_FULL[d.getMonth()]+" "+d.getFullYear();
+    const dayLabel=DAYS_PL[d.getDay()];
+
+    // pasek faz
+    const b=getPhaseBounds(cl);
+    const segments=[
+      {key:"menstrual",len:b.menstrual[1]-b.menstrual[0]+1},
+      {key:"follicular",len:b.follicular[1]-b.follicular[0]+1},
+      {key:"ovulatory",len:b.ovulatory[1]-b.ovulatory[0]+1},
+      {key:"luteal",len:b.luteal[1]-b.luteal[0]+1},
+    ];
+    const bar=segments.map(s=>`<div style="flex:${s.len};background:${phaseColors[s.key]};height:100%;border-radius:inherit"></div>`).join("");
+
+    // koniec cyklu
+    const endD=new Date(d); endD.setDate(endD.getDate()+cl-1);
+    const endLabel=endD.getDate()+" "+MONTHS_FULL[endD.getMonth()];
+
+    const isCurrent=!!c.current;
+    const badge=isCurrent?`<span style="font-size:0.6rem;background:#f0eaf8;color:#9060c0;border-radius:20px;padding:2px 8px;font-weight:600">aktualny</span>`:"";
+
+    const deleteBtn=!isCurrent?`<button onclick="deleteCycleHistory(${idx-1})" style="background:none;border:none;color:#c0a090;font-size:0.75rem;cursor:pointer;padding:0">usuń</button>`:"";
+
+    return `<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-family:'DM Serif Display',serif;font-size:1rem;color:#3a3020">${dayLabel} ${dateLabel}</div>
+          <div style="font-size:0.72rem;color:#a09080;margin-top:1px">${dateLabel} – ${endLabel} · ${cl} dni</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">${badge}${deleteBtn}</div>
+      </div>
+      <div style="height:10px;border-radius:5px;overflow:hidden;display:flex">${bar}</div>
+      <div style="display:flex;margin-top:6px;gap:0">
+        ${segments.map(s=>`<div style="flex:${s.len};text-align:center;font-size:0.55rem;color:${phaseColors[s.key]}">${s.len}d</div>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("hist-list").innerHTML=statsHtml+cardsHtml;
 }
 
 
@@ -722,6 +999,10 @@ function renderToday(){
   if(!state.day) return;
   const p=PHASES[state.phaseKey];
   const a=p.accent;
+
+  // imię w headerze
+  const hdrName=document.getElementById("hdr-name");
+  if(hdrName) hdrName.textContent=state.name?("Cześć, "+state.name+" 👋"):"Cycle Sync";
 
   // color phase icons
   const splSym=document.getElementById("spl-sym");
@@ -740,8 +1021,12 @@ function renderToday(){
 
   // float card
   const day=state.day;
-  const daysLeft=p.range[1]-day+1;
-  const prog=Math.round(((day-p.range[0])/(p.len>1?p.len-1:1))*100);
+  const cl=state.cycleLen||28;
+  const b=getPhaseBounds(cl);
+  const phaseRange=b[state.phaseKey];
+  const phaseLen=phaseRange[1]-phaseRange[0]+1;
+  const daysLeft=phaseRange[1]-day+1;
+  const prog=Math.round(((day-phaseRange[0])/(phaseLen>1?phaseLen-1:1))*100);
   document.getElementById("fc-day-num").textContent=day;
   document.getElementById("fc-day-num").style.color=a;
   document.getElementById("fc-left-num").textContent=daysLeft;
@@ -751,11 +1036,11 @@ function renderToday(){
   document.getElementById("fc-fill").style.width=prog+"%";
   document.getElementById("fc-fill").style.background=a;
 
-  // strip
+  // strip — dynamiczna długość cyklu
   const phaseColors={menstrual:"#c06070",follicular:"#60b050",ovulatory:"#e8b020",luteal:"#9060c0"};
-  document.getElementById("fc-strip").innerHTML=Array.from({length:28},(_,i)=>{
+  document.getElementById("fc-strip").innerHTML=Array.from({length:cl},(_,i)=>{
     const n=i+1;
-    const pk=getPhaseKey(n);
+    const pk=getPhaseKey(n,cl);
     const col=phaseColors[pk];
     let style="";
     if(n<day) style="background:"+col+"70";
@@ -815,12 +1100,19 @@ function renderToday(){
 
 // ── MAGNEZ ──
 function renderMg(){
-  const {day,phaseKey,startDate,mgChecked}=state;
-  const isMenstrualCont=phaseKey==="menstrual"&&day<=2;
-  const isDay20=day===20&&phaseKey==="luteal";
-  // pokazuj: dni 20-28 (lutealna), dni 1-2 (menstruacja kontynuacja)
+  const {day,phaseKey,startDate,mgChecked,cycleLen}=state;
+  const cl=cycleLen||28;
+  const b=getPhaseBounds(cl);
+  const lutStart=b.luteal[0];
+  const lutEnd=b.luteal[1];
+  const mgStartDay=lutStart+Math.max(0,lutEnd-lutStart-9); // ostatnie 10 dni fazy lutealnej
+  const mgPreDay=mgStartDay-1; // dzień "jutro zaczynasz"
+
+  const isMenstrualCont=phaseKey==="menstrual"&&day<=b.menstrual[1]&&day<=2;
+  const isPreDay=day===mgPreDay&&phaseKey==="luteal";
   const showMg=(phaseKey==="luteal"||(phaseKey==="menstrual"&&day<=2))&&day;
-  const activeSuppl=day>=21||isMenstrualCont;
+  const activeSuppl=(phaseKey==="luteal"&&day>=mgStartDay)||isMenstrualCont;
+
   document.getElementById("mg-section").style.display=showMg?"block":"none";
   if(!showMg||!startDate) return;
 
@@ -829,30 +1121,23 @@ function renderMg(){
   const todayDate=new Date(); todayDate.setHours(0,0,0,0);
 
   document.getElementById("mg-sub-txt").textContent=
-    isMenstrualCont
-      ?"Zaznaczaj dni, które masz za sobą"
-      :isDay20
-        ?"Jutro rozpoczynasz suplementację magnezu!"
-        :day<21
-          ?"Suplementacja zaczyna się za "+(21-day)+" dni"
-          :"Zaznaczaj dni, które masz za sobą";
+    isMenstrualCont?"Zaznaczaj dni, które masz za sobą"
+    :isPreDay?"Jutro rozpoczynasz suplementację magnezu!"
+    :(phaseKey==="luteal"&&day<mgStartDay)?"Suplementacja zaczyna się za "+(mgStartDay-day)+" dni"
+    :"Zaznaczaj dni, które masz za sobą";
 
-  // na dzień 20 — tylko info, bez kafelków
-  if(isDay20){
-    document.getElementById("mg-tiles").innerHTML="";
-    return;
-  }
+  if(isPreDay){document.getElementById("mg-tiles").innerHTML="";return;}
 
   let html="";
   for(let i=0;i<10;i++){
-    const cd=21+i;
+    const cd=mgStartDay+i;
+    if(cd>lutEnd+2) break;
     const dt=new Date(cycleStart);
     dt.setDate(dt.getDate()+cd-1);
     const isToday=dt.toDateString()===todayDate.toDateString();
     const isPast=dt<todayDate;
     const isDone=!!mgChecked[String(cd)];
     if(!activeSuppl){
-      // lutealna, za wcześnie (dni 17-20 już obsłużone wyżej)
       html+='<div class="mg-tile mg-tile-off"><span>'+dt.getDate()+'</span><span style="font-size:0.5rem">'+MONTHS[dt.getMonth()]+'</span></div>';
     } else {
       const bg=isDone?"#7a5090":isPast||isMenstrualCont?"#ddd0ee":isToday?"#c4a0dc":"#f0eaf8";
@@ -1173,11 +1458,358 @@ function renderPhaseScreen(){
     '<div style="height:8px"></div>';
 }
 
+// ── TRACKER ──
+function todayKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0');
+}
+
+function renderTracker(){
+  const body=document.getElementById("tracker-body");
+  if(!state.day){
+    body.innerHTML='<div style="text-align:center;padding:40px 0;color:#a09080;font-family:\'DM Serif Display\',serif;font-style:italic">Najpierw wybierz datę cyklu</div>';
+    return;
+  }
+  const p=PHASES[state.phaseKey];
+  const a=p.accent;
+  const key=todayKey();
+  const entry=state.trackEntries[key]||{};
+
+  // Opis fazy do oceny zgodności
+  const phaseDesc={
+    menstrual:{mood:"Spokojna, refleksyjna, wrażliwa",energy:"Niska — czas na odpoczynek"},
+    follicular:{mood:"Optymistyczna, kreatywna, ciekawa",energy:"Rosnąca — czas na nowe projekty"},
+    ovulatory:{mood:"Pewna siebie, otwarta, towarzyska",energy:"Wysoka — czas na działanie"},
+    luteal:{mood:"Skupiona, analityczna, introspekcyjna",energy:"Opada — czas na kończenie"}
+  };
+
+  const desc=phaseDesc[state.phaseKey];
+
+  // Historia ostatnich wpisów
+  const recentKeys=Object.keys(state.trackEntries).sort().reverse().slice(0,14);
+
+  body.innerHTML=
+    // Karta dzisiejszego wpisu
+    '<div style="background:#fff;border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:16px">'+
+    '<div style="font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:'+a+';margin-bottom:12px">Dzisiejszy wpis · Dzień '+state.day+'</div>'+
+
+    // Energia
+    '<div style="margin-bottom:16px">'+
+    '<div style="font-size:0.78rem;color:#5a4e3a;margin-bottom:6px;font-weight:500">⚡ Poziom energii <span style="color:#a09080;font-weight:400">'+desc.energy+'</span></div>'+
+    '<div style="display:flex;gap:6px">'+
+    [1,2,3,4,5].map(v=>{
+      const sel=(entry.energy||0)===v;
+      return '<button onclick="trackSet(\'energy\','+v+')" style="flex:1;padding:10px 0;border-radius:10px;border:'+(sel?'2px solid '+a:'1.5px solid #e8e0d8')+';background:'+(sel?a+'18':'#fff')+';font-size:0.9rem;cursor:pointer;font-weight:'+(sel?'700':'400')+';color:'+(sel?a:'#8a7a6a')+'">'+v+'</button>';
+    }).join('')+
+    '</div></div>'+
+
+    // Nastrój
+    '<div style="margin-bottom:16px">'+
+    '<div style="font-size:0.78rem;color:#5a4e3a;margin-bottom:6px;font-weight:500">🙂 Nastrój <span style="color:#a09080;font-weight:400">'+desc.mood+'</span></div>'+
+    '<div style="display:flex;gap:6px">'+
+    [1,2,3,4,5].map(v=>{
+      const sel=(entry.mood||0)===v;
+      return '<button onclick="trackSet(\'mood\','+v+')" style="flex:1;padding:10px 0;border-radius:10px;border:'+(sel?'2px solid '+a:'1.5px solid #e8e0d8')+';background:'+(sel?a+'18':'#fff')+';font-size:0.9rem;cursor:pointer;font-weight:'+(sel?'700':'400')+';color:'+(sel?a:'#8a7a6a')+'">'+v+'</button>';
+    }).join('')+
+    '</div></div>'+
+
+    // Zgodność z fazą
+    '<div>'+
+    '<div style="font-size:0.78rem;color:#5a4e3a;margin-bottom:8px;font-weight:500">'+p.ico+' Czy czujesz się zgodnie z opisem fazy?</div>'+
+    '<div style="font-size:0.75rem;color:#a09080;font-style:italic;margin-bottom:10px;padding:8px 12px;background:#f8f5f0;border-radius:10px;line-height:1.5">'+
+    p.mood+'</div>'+
+    '<div style="display:flex;gap:8px">'+
+    [{v:'tak',lbl:'Tak, zgadza się 👍'},{v:'częściowo',lbl:'Częściowo 🤷'},{v:'nie',lbl:'Nie, inaczej 🙅'}].map(opt=>{
+      const sel=(entry.match||'')===opt.v;
+      return '<button onclick="trackSet(\'match\',\''+opt.v+'\')" style="flex:1;padding:8px 4px;border-radius:10px;border:'+(sel?'2px solid '+a:'1.5px solid #e8e0d8')+';background:'+(sel?a+'18':'#fff')+';font-size:0.65rem;cursor:pointer;color:'+(sel?a:'#8a7a6a')+';font-weight:'+(sel?'600':'400')+';line-height:1.3">'+opt.lbl+'</button>';
+    }).join('')+
+    '</div></div>'+
+    '</div>'+
+
+    // Historia
+    (recentKeys.length>0?
+    '<div style="margin-top:20px">'+
+    '<div style="font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:#a09080;margin-bottom:12px">Ostatnie wpisy</div>'+
+    recentKeys.map(k=>{
+      const e=state.trackEntries[k];
+      const parts=k.split('-');
+      const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+      const label=d.getDate()+' '+MONTHS[d.getMonth()];
+      const matchIco=e.match==='tak'?'👍':e.match==='częściowo'?'🤷':e.match==='nie'?'🙅':'—';
+      const isToday=k===todayKey();
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0ece6">'+
+        '<div style="font-size:0.75rem;color:#a09080;width:46px;flex-shrink:0">'+label+(isToday?' <span style="font-size:0.6rem;color:'+a+'">dziś</span>':'')+'</div>'+
+        '<div style="display:flex;gap:4px;align-items:center">'+
+        '<span style="font-size:0.65rem;color:#a09080">⚡</span>'+
+        [1,2,3,4,5].map(v=>'<div style="width:8px;height:8px;border-radius:2px;background:'+(v<=(e.energy||0)?a:'#e8e0d8')+'"></div>').join('')+
+        '</div>'+
+        '<div style="display:flex;gap:4px;align-items:center">'+
+        '<span style="font-size:0.65rem;color:#a09080">🙂</span>'+
+        [1,2,3,4,5].map(v=>'<div style="width:8px;height:8px;border-radius:2px;background:'+(v<=(e.mood||0)?a:'#e8e0d8')+'"></div>').join('')+
+        '</div>'+
+        '<div style="font-size:0.85rem;margin-left:auto">'+matchIco+'</div>'+
+      '</div>';
+    }).join('')+
+    '</div>':'')+
+
+    // Podsumowanie per faza
+    (()=>{
+      const allEntries=Object.values(state.trackEntries);
+      if(allEntries.length<3) return ''; // za mało danych
+
+      const phaseNames={menstrual:"Menstruacyjna",follicular:"Folikularna",ovulatory:"Owulacyjna",luteal:"Lutealna"};
+      const phaseIco={menstrual:"🌑",follicular:"🌱",ovulatory:"☀️",luteal:"🌕"};
+      const phaseAccents={menstrual:"#b05060",follicular:"#3a8828",ovulatory:"#c8960a",luteal:"#6030a0"};
+
+      const stats={};
+      PHASE_ORDER.forEach(pk=>{
+        const entries=allEntries.filter(e=>e.phase===pk);
+        if(!entries.length) return;
+        const avgE=entries.filter(e=>e.energy).reduce((s,e)=>s+(e.energy||0),0)/entries.filter(e=>e.energy).length||0;
+        const avgM=entries.filter(e=>e.mood).reduce((s,e)=>s+(e.mood||0),0)/entries.filter(e=>e.mood).length||0;
+        const matchEntries=entries.filter(e=>e.match);
+        const matchPct=matchEntries.length?Math.round(matchEntries.filter(e=>e.match==='tak').length/matchEntries.length*100):null;
+        stats[pk]={avgE:Math.round(avgE*10)/10,avgM:Math.round(avgM*10)/10,matchPct,n:entries.length};
+      });
+
+      if(!Object.keys(stats).length) return '';
+
+      return '<div style="margin-top:24px">'+
+        '<div style="font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:#a09080;margin-bottom:12px">Podsumowanie per faza</div>'+
+        '<div style="font-size:0.7rem;color:#a09080;margin-bottom:12px;font-style:italic">Na podstawie '+allEntries.length+' wpisów</div>'+
+        PHASE_ORDER.filter(pk=>stats[pk]).map(pk=>{
+          const s=stats[pk];
+          const ac=phaseAccents[pk];
+          return '<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:8px;box-shadow:0 1px 6px rgba(0,0,0,0.05)">'+
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+            '<span style="font-size:1rem">'+phaseIco[pk]+'</span>'+
+            '<div style="font-family:\'DM Serif Display\',serif;font-size:0.9rem;color:#3a3020">'+phaseNames[pk]+'</div>'+
+            '<div style="font-size:0.65rem;color:#a09080;margin-left:auto">'+s.n+' dni</div>'+
+            '</div>'+
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+            // Energia
+            '<div style="text-align:center">'+
+            '<div style="font-family:\'DM Serif Display\',serif;font-size:1.3rem;color:'+ac+'">'+
+            (s.avgE?s.avgE.toFixed(1):'—')+'</div>'+
+            '<div style="font-size:0.6rem;color:#a09080;margin-top:2px">śr. energia</div>'+
+            '<div style="height:4px;border-radius:2px;background:#f0ece6;margin-top:5px">'+
+            '<div style="height:100%;border-radius:2px;background:'+ac+';width:'+((s.avgE||0)/5*100)+'%"></div>'+
+            '</div></div>'+
+            // Nastrój
+            '<div style="text-align:center">'+
+            '<div style="font-family:\'DM Serif Display\',serif;font-size:1.3rem;color:'+ac+'">'+
+            (s.avgM?s.avgM.toFixed(1):'—')+'</div>'+
+            '<div style="font-size:0.6rem;color:#a09080;margin-top:2px">śr. nastrój</div>'+
+            '<div style="height:4px;border-radius:2px;background:#f0ece6;margin-top:5px">'+
+            '<div style="height:100%;border-radius:2px;background:'+ac+';width:'+((s.avgM||0)/5*100)+'%"></div>'+
+            '</div></div>'+
+            // Zgodność
+            '<div style="text-align:center">'+
+            '<div style="font-family:\'DM Serif Display\',serif;font-size:1.3rem;color:'+ac+'">'+
+            (s.matchPct!==null?s.matchPct+'%':'—')+'</div>'+
+            '<div style="font-size:0.6rem;color:#a09080;margin-top:2px">zgodność</div>'+
+            '<div style="height:4px;border-radius:2px;background:#f0ece6;margin-top:5px">'+
+            '<div style="height:100%;border-radius:2px;background:'+ac+';width:'+(s.matchPct||0)+'%"></div>'+
+            '</div></div>'+
+            '</div></div>';
+        }).join('')+
+      '</div>';
+    })();
+}
+
+function trackSet(field,val){
+  const key=todayKey();
+  if(!state.trackEntries[key]) state.trackEntries[key]={};
+  state.trackEntries[key].phase=state.phaseKey;
+  state.trackEntries[key].day=state.day;
+  state.trackEntries[key][field]=val;
+  saveState();
+  renderTracker();
+}
+
+// ── REMINDER ──
+function toggleReminder(){
+  state.reminderEnabled=!state.reminderEnabled;
+  updateReminderUI();
+}
+
+function updateReminderUI(){
+  const toggle=document.getElementById("rem-toggle");
+  const knob=document.getElementById("rem-knob");
+  const timeRow=document.getElementById("rem-time-row");
+  const note=document.getElementById("rem-note");
+  if(!toggle) return;
+  if(state.reminderEnabled){
+    toggle.style.background="#9060c0";
+    knob.style.left="23px";
+    timeRow.style.display="flex";
+    note.style.display="block";
+  } else {
+    toggle.style.background="#d8d0c8";
+    knob.style.left="3px";
+    timeRow.style.display="none";
+    note.style.display="none";
+  }
+}
+
+function scheduleReminder(){
+  if(!state.reminderEnabled||!('Notification' in window)) return;
+  Notification.requestPermission().then(perm=>{
+    if(perm!=='granted') return;
+    // sprawdź czy dziś jest dzień suplementacji
+    if(!state.day||!state.phaseKey) return;
+    const cl=state.cycleLen||28;
+    const b=getPhaseBounds(cl);
+    const mgStart=b.luteal[0]+Math.max(0,(b.luteal[1]-b.luteal[0]+1)-10);
+    const isMgDay=(state.phaseKey==="luteal"&&state.day>=mgStart)||(state.phaseKey==="menstrual"&&state.day<=2);
+    if(!isMgDay) return;
+    // zaplanuj na ustawioną godzinę
+    const [h,m]=(state.reminderTime||"20:00").split(":").map(Number);
+    const now=new Date();
+    const target=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m,0);
+    if(target<=now) return; // minęła godzina
+    const delay=target-now;
+    setTimeout(()=>{
+      new Notification("💊 Cycle Sync",{
+        body:"Pamiętaj o magnez! Dzień "+state.day+" cyklu.",
+        icon:"./icon-192.png"
+      });
+    },delay);
+  });
+}
+
+// ── KALENDARZ ──
+let calYear=new Date().getFullYear();
+let calMonth=new Date().getMonth();
+const MONTHS_FULL=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
+const MONTHS_GEN=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+const PHASE_COLORS={menstrual:"#c06070",follicular:"#60b050",ovulatory:"#e8b020",luteal:"#9060c0"};
+const PHASE_NAMES={menstrual:"Menstruacyjna",follicular:"Folikularna",ovulatory:"Owulacyjna",luteal:"Lutealna"};
+const PHASE_ICO={menstrual:"🌑",follicular:"🌱",ovulatory:"☀️",luteal:"🌕"};
+
+function openCalendar(){
+  calYear=new Date().getFullYear();
+  calMonth=new Date().getMonth();
+  document.getElementById("cal-overlay").style.display="flex";
+  document.getElementById("cal-day-detail").style.display="none";
+  renderCalendar();
+}
+function closeCalendar(){
+  document.getElementById("cal-overlay").style.display="none";
+}
+function calPrevMonth(){
+  calMonth--;
+  if(calMonth<0){calMonth=11;calYear--;}
+  document.getElementById("cal-day-detail").style.display="none";
+  renderCalendar();
+}
+function calNextMonth(){
+  calMonth++;
+  if(calMonth>11){calMonth=0;calYear++;}
+  document.getElementById("cal-day-detail").style.display="none";
+  renderCalendar();
+}
+
+// Zwraca informację o fazie dla danego Date
+function getInfoForDate(date){
+  if(!state.startDate) return null;
+  const cl=state.cycleLen||28;
+  const parts=state.startDate.split("-");
+  const cycleStart=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  cycleStart.setHours(0,0,0,0);
+  const d=new Date(date); d.setHours(0,0,0,0);
+  const diff=Math.floor((d-cycleStart)/86400000);
+  if(diff<0) return null; // przed startem cyklu
+  const dayInCycle=((diff)%cl)+1;
+  const phaseKey=getPhaseKey(dayInCycle,cl);
+  const b=getPhaseBounds(cl);
+  // magnez: ostatnie 10 dni lutealnej + pierwsze 2 dni menstrualnej
+  const mgStart=b.luteal[0]+Math.max(0,(b.luteal[1]-b.luteal[0]+1)-10);
+  const isMg=(phaseKey==="luteal"&&dayInCycle>=mgStart)||(phaseKey==="menstrual"&&dayInCycle<=2);
+  return {dayInCycle,phaseKey,isMg};
+}
+
+function renderCalendar(){
+  document.getElementById("cal-title").textContent=MONTHS_FULL[calMonth]+" "+calYear;
+  const today=new Date(); today.setHours(0,0,0,0);
+  // pierwszy dzień miesiąca — jaki dzień tygodnia (Pn=0)
+  const firstDay=new Date(calYear,calMonth,1);
+  let startOffset=(firstDay.getDay()+6)%7; // poniedziałek jako pierwszy
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+
+  let html="";
+  // puste komórki przed pierwszym dniem
+  for(let i=0;i<startOffset;i++){
+    html+='<div></div>';
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const date=new Date(calYear,calMonth,d);
+    const info=getInfoForDate(date);
+    const isToday=date.toDateString()===today.toDateString();
+    const isFuture=date>today;
+
+    let bg="transparent";
+    let border="none";
+    let color="#5a4e3a";
+    let opacity=isFuture?"0.4":"1";
+    let mgDot="";
+
+    if(info){
+      const col=PHASE_COLORS[info.phaseKey];
+      bg=col+(isFuture?"18":"30");
+      color=col.replace(/[0-9a-f]{2}$/,"").replace("#","");
+      // ciemniejszy kolor tekstu
+      color="#3a3020";
+      if(info.isMg){
+        border="1.5px solid "+PHASE_COLORS.luteal;
+        mgDot='<div style="width:4px;height:4px;border-radius:50%;background:#9060c0;margin:1px auto 0"></div>';
+      }
+    }
+
+    const todayRing=isToday?";box-shadow:0 0 0 2px #fff,0 0 0 3.5px "+(info?PHASE_COLORS[info.phaseKey]:"#9060c0"):"";
+
+    html+=`<div onclick="calDayClick(${d})" style="aspect-ratio:1;border-radius:8px;background:${bg};border:${border};display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;opacity:${opacity}${todayRing}">
+      <span style="font-size:0.75rem;font-weight:${isToday?"700":"400"};color:#3a3020;line-height:1">${d}</span>
+      ${mgDot}
+    </div>`;
+  }
+  document.getElementById("cal-grid").innerHTML=html;
+}
+
+function calDayClick(d){
+  const date=new Date(calYear,calMonth,d);
+  const info=getInfoForDate(date);
+  const detail=document.getElementById("cal-day-detail");
+  if(!info){
+    detail.style.display="none";
+    return;
+  }
+  const p=PHASES[info.phaseKey];
+  const col=PHASE_COLORS[info.phaseKey];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const isToday=date.toDateString()===today.toDateString();
+  detail.style.display="block";
+  detail.innerHTML=
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">'+
+    '<div style="width:40px;height:40px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">'+PHASE_ICO[info.phaseKey]+'</div>'+
+    '<div>'+
+    '<div style="font-family:\'DM Serif Display\',serif;font-size:1rem;color:#3a3020">'+d+' '+MONTHS_GEN[calMonth]+' '+calYear+(isToday?' <span style="font-size:0.65rem;background:'+col+'22;color:'+col+';border-radius:20px;padding:2px 7px;font-family:\'DM Sans\',sans-serif">dziś</span>':'')+'</div>'+
+    '<div style="font-size:0.75rem;color:'+col+';margin-top:2px">'+PHASE_NAMES[info.phaseKey]+' · dzień '+info.dayInCycle+'</div>'+
+    '</div></div>'+
+    '<div style="font-size:0.78rem;color:#7a6a58;line-height:1.6;border-top:1px solid #ece8e0;padding-top:10px">'+
+    '<span style="color:#a09080;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase">Nastrój</span><br>'+p.mood+
+    '</div>'+
+    (info.isMg?'<div style="margin-top:8px;padding:8px 10px;background:#f0eaf8;border-radius:10px;font-size:0.75rem;color:#7a5090">💊 Dzień suplementacji magnezu</div>':'')+
+    '<div style="margin-top:8px;font-size:0.75rem;color:#a09080;font-style:italic">'+p.tip+'</div>';
+}
+
 // ── ONBOARDING ──
 function onboardStart(){
   const val=document.getElementById("ob-date").value;
   if(!val) return;
   state.startDate=val;
+  state.name=document.getElementById("ob-name").value.trim();
+  state.cycleLen=cycleLen;
   recalcDay(val);
   saveState();
   document.getElementById("dateInput").value=val;
@@ -1188,27 +1820,79 @@ function onboardStart(){
   renderNav();
 }
 
+// ── USTAWIENIA ──
+function openSettings(){
+  setLen=state.cycleLen||28;
+  document.getElementById("set-name").value=state.name||"";
+  document.getElementById("set-cycle-val").textContent=setLen;
+  document.getElementById("set-date").value=state.startDate||"";
+  document.getElementById("set-reminder-time").value=state.reminderTime||"20:00";
+  updateReminderUI();
+  const ov=document.getElementById("settings-overlay");
+  ov.style.display="flex";
+}
+function closeSettings(){
+  document.getElementById("settings-overlay").style.display="none";
+}
+function saveSettings(){
+  const newName=document.getElementById("set-name").value.trim();
+  const newDate=document.getElementById("set-date").value;
+  state.name=newName;
+  state.cycleLen=setLen;
+  if(newDate && newDate!==state.startDate){
+    archiveCurrent(newDate);
+    state.startDate=newDate;
+    document.getElementById("dateInput").value=newDate;
+    recalcDay(newDate);
+  }
+  state.reminderTime=document.getElementById("set-reminder-time").value||"20:00";
+  saveState();
+  closeSettings();
+  scheduleReminder();
+  renderToday();
+  renderNav();
+  if(state.screen==="eat") renderEat();
+  if(state.screen==="phase") renderPhaseScreen();
+  if(state.screen==="history") renderHistory();
+}
+
+// Zapisuje bieżący cykl do historii przed zmianą daty
+function archiveCurrent(newDate){
+  const old=state.startDate;
+  if(!old || old===newDate) return;
+  // oblicz rzeczywistą długość — od startu do dnia przed nowym cyklem
+  const parts=old.split("-");
+  const s=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  const np=newDate.split("-");
+  const n=new Date(parseInt(np[0]),parseInt(np[1])-1,parseInt(np[2]));
+  const actualLen=Math.round((n-s)/86400000);
+  const cl=actualLen>0&&actualLen<=60?actualLen:(state.cycleLen||28);
+  if(!state.cycleHistory.some(c=>c.startDate===old)){
+    state.cycleHistory.unshift({startDate:old,cycleLen:cl});
+    if(state.cycleHistory.length>24) state.cycleHistory=state.cycleHistory.slice(0,24);
+  }
+}
+
 // ── DATE ──
 function recalcDay(dateStr){
   if(!dateStr) return;
+  const cl=state.cycleLen||28;
   const parts=dateStr.split("-");
   const start=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
   start.setHours(0,0,0,0);
   const today=new Date(); today.setHours(0,0,0,0);
   const diff=Math.floor((today-start)/86400000)+1;
   if(diff<1){
-    // data w przyszłości — pokaż dzień 1
     state.day=1;
     state.phaseKey="menstrual";
     return;
   }
-  const newDay=((diff-1)%MAX_DAY)+1;  // zawsze 1–28, bezpieczne
-  const newPhase=getPhaseKey(newDay);
-  // resetuj eatChecked przy zmianie fazy
+  const newDay=((diff-1)%cl)+1;
+  const newPhase=getPhaseKey(newDay,cl);
   if(newPhase!==state.phaseKey) state.eatChecked={};
-  // resetuj mgChecked tylko gdy zaczyna się nowy cykl (wracamy do dnia 1)
   const oldDay=state.day||0;
-  if(newDay<oldDay && newDay<=6 && oldDay>20) state.mgChecked={};
+  const b=getPhaseBounds(cl);
+  if(newDay<oldDay && newDay<=b.menstrual[1] && oldDay>b.luteal[0]) state.mgChecked={};
   state.day=newDay;
   state.phaseKey=newPhase;
 }
@@ -1219,9 +1903,11 @@ document.getElementById("ob-date").max=new Date().toISOString().split("T")[0];
 document.getElementById("dateInput").addEventListener("change",function(){
   const v=this.value;
   if(!v){state.day=null;state.startDate="";saveState();return}
+  archiveCurrent(v);
   state.startDate=v;recalcDay(v);saveState();renderToday();renderNav();
   if(state.screen==="eat") renderEat();
   if(state.screen==="phase") renderPhaseScreen();
+  if(state.screen==="history") renderHistory();
 });
 
 setInterval(()=>{
@@ -1235,11 +1921,21 @@ const saved=loadSaved();
 if(saved&&saved.startDate){
   state.startDate=saved.startDate;
   state.mgChecked=saved.mgChecked||{};
-  // eatChecked: odtwórz, recalcDay wyczyści jeśli faza się zmieniła
   state.eatChecked=saved.eatChecked||{};
+  state.name=saved.name||"";
+  state.cycleLen=saved.cycleLen||28;
+  state.cycleHistory=saved.cycleHistory||[];
+  state.trackEntries=saved.trackEntries||{};
+  state.reminderTime=saved.reminderTime||"20:00";
+  state.reminderEnabled=saved.reminderEnabled||false;
+  cycleLen=state.cycleLen;
+  // splash zostaje "Cycle Sync", imię pojawi się w headerze Dziś
   document.getElementById("dateInput").value=saved.startDate;
   document.getElementById("ob-date").value=saved.startDate;
+  document.getElementById("ob-name").value=state.name;
+  document.getElementById("ob-cycle-val").textContent=state.cycleLen;
   recalcDay(saved.startDate);
+  scheduleReminder();
   // skip onboarding
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById("screen-today").classList.add("active");
