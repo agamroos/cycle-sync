@@ -1,4 +1,4 @@
-const CACHE = 'cycle-sync-v4';
+const CACHE = 'cycle-sync-v5';
 const FILES = [
   './',
   './index.html',
@@ -33,5 +33,15 @@ self.addEventListener('fetch', e => {
         return res;
       }))
       .catch(() => caches.match('./index.html'))
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({type:'window',includeUncontrolled:true}).then(list => {
+      if(list.length > 0) return list[0].focus();
+      return clients.openWindow('./');
+    })
   );
 });
