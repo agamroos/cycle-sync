@@ -77,7 +77,7 @@
       transition:background 1.4s ease;
       padding-bottom:44px;
     }
-    .hdr{padding:18px 22px 10px;display:flex;align-items:flex-start;justify-content:space-between}
+    .hdr{padding:18px 22px 10px;display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:20}
     .hdr-brand{font-family:'DM Serif Display',serif;font-size:1.15rem;color:#fff;letter-spacing:0;text-transform:none}
     .hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
     .hdr-lbl{font-size:0.55rem;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.5)}
@@ -560,10 +560,6 @@
           <div id="rem-knob" style="position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.2s"></div>
         </div>
       </div>
-      <div id="rem-time-row" style="display:none;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:0.82rem;color:#5a4e3a">Godzina przypomnienia</div>
-        <input type="time" id="set-reminder-time" style="border:1.5px solid #d8cfc4;border-radius:10px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:#3a3020;background:#fff"/>
-      </div>
       <div id="rem-status" style="display:none;margin-bottom:12px"></div>
       <div id="rem-test-row" style="display:none;margin-bottom:16px">
         <button onclick="testNotification()" style="width:100%;padding:10px;border:1.5px solid #9060c0;border-radius:12px;background:#f0eaf8;color:#7a5090;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer">Wyślij testowe powiadomienie</button>
@@ -861,19 +857,20 @@ let cycleLen=28; // zmienna onboardingu
 let setLen=28;   // zmienna modala ustawień
 let histAddLen=28; // zmienna formularza historii
 
-let state={day:null,phaseKey:"menstrual",screen:"today",eatTab:"eat",lsTab:"Nastrój",menuIdx:0,startDate:"",mgChecked:{},eatChecked:{},name:"",cycleLen:28,cycleHistory:[],trackEntries:{},reminderTime:"20:00",reminderEnabled:false};
+let state={day:null,phaseKey:"menstrual",screen:"today",eatTab:"eat",lsTab:"Nastrój",menuIdx:0,startDate:"",mgChecked:{},eatChecked:{},name:"",cycleLen:28,cycleHistory:[],trackEntries:{},reminderEnabled:false};
 
 function loadSaved(){try{const s=localStorage.getItem("cs3");return s?JSON.parse(s):null}catch(e){return null}}
-function saveState(){try{localStorage.setItem("cs3",JSON.stringify({startDate:state.startDate,mgChecked:state.mgChecked,eatChecked:state.eatChecked,name:state.name,cycleLen:state.cycleLen,cycleHistory:state.cycleHistory,trackEntries:state.trackEntries,reminderTime:state.reminderTime,reminderEnabled:state.reminderEnabled}))}catch(e){}}
+function saveState(){try{localStorage.setItem("cs3",JSON.stringify({startDate:state.startDate,mgChecked:state.mgChecked,eatChecked:state.eatChecked,name:state.name,cycleLen:state.cycleLen,cycleHistory:state.cycleHistory,trackEntries:state.trackEntries,reminderEnabled:state.reminderEnabled}))}catch(e){}}
 
 // Oblicza granice faz proporcjonalnie do długości cyklu
 // Standardowe proporcje: menstrual 6/28, follicular 6/28, ovulatory 4/28, luteal 12/28
 function getPhaseBounds(cl){
   cl=cl||28;
-  const m=Math.round(cl*6/28);
-  const f=Math.round(cl*6/28);
-  const o=Math.round(cl*4/28);
-  const l=cl-m-f-o;
+  // stałe długości 3 pierwszych faz (jak przy 28 dniach)
+  const m=6;
+  const f=6;
+  const o=4;
+  const l=cl-m-f-o; // lutealna = reszta do końca cyklu
   return {
     menstrual:[1,m],
     follicular:[m+1,m+f],
@@ -1733,7 +1730,6 @@ function toggleReminder(){
 function updateReminderUI(){
   const toggle=document.getElementById("rem-toggle");
   const knob=document.getElementById("rem-knob");
-  const timeRow=document.getElementById("rem-time-row");
   const statusEl=document.getElementById("rem-status");
   const testRow=document.getElementById("rem-test-row");
   if(!toggle) return;
@@ -1786,6 +1782,7 @@ function testNotification(){
 function scheduleReminder(){
   if(!state.reminderEnabled||!('Notification' in window)) return;
   if(!state.day||!state.phaseKey||!state.startDate) return;
+  if(Notification.permission!=='granted') return;
 
   // sprawdź czy dziś jest dzień magnezu
   const cl=state.cycleLen||28;
@@ -1794,49 +1791,24 @@ function scheduleReminder(){
   const isMgDay=(state.phaseKey==="luteal"&&state.day>=mgStart)||(state.phaseKey==="menstrual"&&state.day<=2);
   if(!isMgDay) return;
 
-  function doSchedule(){
-    if(Notification.permission!=='granted') return;
+  // nie wysyłaj dwa razy tego samego dnia
+  const firedKey="mg-notif-"+todayKey();
+  try{ if(localStorage.getItem(firedKey)) return; }catch(e){}
 
-    const todayStr=todayKey();
-    const firedKey="mg-notif-"+todayStr;
-    try{ if(localStorage.getItem(firedKey)) return; }catch(e){}
-
-    const [h,mn]=(state.reminderTime||"20:00").split(":").map(Number);
-    const now=new Date();
-    const target=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,mn,0);
-    const delay=target-now;
-
-    function fireNotification(){
+  const opts={
+    body:"Dzień "+state.day+" cyklu. Czas na magnez!",
+    icon:"./icon-192.png",
+    tag:"magnez-"+todayKey()
+  };
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.ready.then(reg=>{
+      reg.showNotification("💊 Magnez — Cycle Sync", opts);
       try{ localStorage.setItem(firedKey,"1"); }catch(e){}
-      const opts={
-        body:"Dzień "+state.day+" cyklu. Czas na magnez!",
-        icon:"./icon-192.png",
-        tag:"magnez-"+todayStr
-      };
-      if('serviceWorker' in navigator){
-        navigator.serviceWorker.ready.then(reg=>{
-          reg.showNotification("💊 Magnez — Cycle Sync", opts);
-        });
-      } else {
-        try{ new Notification("💊 Magnez — Cycle Sync", opts); }catch(e){}
-      }
-    }
-
-    if(delay<=0){
-      fireNotification();
-    } else {
-      setTimeout(fireNotification, delay);
-    }
+    });
+  } else {
+    try{ new Notification("💊 Magnez — Cycle Sync", opts);
+      localStorage.setItem(firedKey,"1"); }catch(e){}
   }
-
-  // jeśli zgoda już nadana — działaj od razu
-  if(Notification.permission==='granted'){
-    doSchedule();
-  } else if(Notification.permission==='default'){
-    // poproś o zgodę tylko jeśli jeszcze nie było decyzji
-    Notification.requestPermission().then(p=>{ if(p==='granted') doSchedule(); });
-  }
-  // jeśli 'denied' — nic nie rób
 }
 
 // ── KALENDARZ ──
@@ -1987,7 +1959,6 @@ function openSettings(){
   document.getElementById("set-name").value=state.name||"";
   document.getElementById("set-cycle-val").textContent=setLen;
   document.getElementById("set-date").value=state.startDate||"";
-  document.getElementById("set-reminder-time").value=state.reminderTime||"20:00";
   updateReminderUI();
   const ov=document.getElementById("settings-overlay");
   ov.style.display="flex";
@@ -2033,7 +2004,6 @@ function saveSettings(){
     setDateInput(newDate);
     recalcDay(newDate);
   }
-  state.reminderTime=document.getElementById("set-reminder-time").value||"20:00";
   saveState();
   closeSettings();
   // poproś o zgodę z gestu użytkownika (tap w Zapisz), potem zaplanuj
@@ -2153,7 +2123,6 @@ if(saved&&saved.startDate){
   state.cycleLen=saved.cycleLen||28;
   state.cycleHistory=saved.cycleHistory||[];
   state.trackEntries=saved.trackEntries||{};
-  state.reminderTime=saved.reminderTime||"20:00";
   state.reminderEnabled=saved.reminderEnabled||false;
   cycleLen=state.cycleLen;
   // splash zostaje "Cycle Sync", imię pojawi się w headerze Dziś
