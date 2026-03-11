@@ -1769,14 +1769,17 @@ function updateReminderUI(){
 
 function testNotification(){
   if(!('Notification' in window)||Notification.permission!=='granted') return;
-  try{
-    new Notification("💊 Magnez — Cycle Sync",{
-      body:"To jest testowe powiadomienie. Działa!",
-      icon:"./icon-192.png",
-      tag:"magnez-test"
-    });
-  }catch(e){
-    alert("Błąd powiadomienia: "+e.message);
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.ready.then(reg=>{
+      reg.showNotification("💊 Magnez — Cycle Sync",{
+        body:"To jest testowe powiadomienie. Działa!",
+        icon:"./icon-192.png",
+        tag:"magnez-test"
+      });
+    }).catch(e=>alert("Błąd: "+e.message));
+  } else {
+    try{ new Notification("💊 Test",{body:"Działa!"}); }
+    catch(e){ alert("Błąd powiadomienia: "+e.message); }
   }
 }
 
@@ -1805,13 +1808,18 @@ function scheduleReminder(){
 
     function fireNotification(){
       try{ localStorage.setItem(firedKey,"1"); }catch(e){}
-      try{
-        new Notification("💊 Magnez — Cycle Sync",{
-          body:"Dzień "+state.day+" cyklu. Czas na magnez!",
-          icon:"./icon-192.png",
-          tag:"magnez-"+todayStr
+      const opts={
+        body:"Dzień "+state.day+" cyklu. Czas na magnez!",
+        icon:"./icon-192.png",
+        tag:"magnez-"+todayStr
+      };
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.ready.then(reg=>{
+          reg.showNotification("💊 Magnez — Cycle Sync", opts);
         });
-      }catch(e){ console.warn("Notification error:",e); }
+      } else {
+        try{ new Notification("💊 Magnez — Cycle Sync", opts); }catch(e){}
+      }
     }
 
     if(delay<=0){
