@@ -560,11 +560,14 @@
           <div id="rem-knob" style="position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.2s"></div>
         </div>
       </div>
-      <div id="rem-time-row" style="display:none;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <div id="rem-time-row" style="display:none;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div style="font-size:0.82rem;color:#5a4e3a">Godzina przypomnienia</div>
         <input type="time" id="set-reminder-time" style="border:1.5px solid #d8cfc4;border-radius:10px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:#3a3020;background:#fff"/>
       </div>
-      <div id="rem-note" style="font-size:0.72rem;color:#a09080;margin-bottom:24px;display:none">Aplikacja poprosi o zgodę na powiadomienia przy pierwszym zapisie.</div>
+      <div id="rem-status" style="display:none;margin-bottom:12px"></div>
+      <div id="rem-test-row" style="display:none;margin-bottom:16px">
+        <button onclick="testNotification()" style="width:100%;padding:10px;border:1.5px solid #9060c0;border-radius:12px;background:#f0eaf8;color:#7a5090;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer">Wyślij testowe powiadomienie</button>
+      </div>
 
       <button onclick="saveSettings()" style="width:100%;padding:14px;border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;color:#fff;cursor:pointer;background:linear-gradient(135deg,#9060c0,#7040a0)">Zapisz zmiany</button>
     </div>
@@ -1731,18 +1734,49 @@ function updateReminderUI(){
   const toggle=document.getElementById("rem-toggle");
   const knob=document.getElementById("rem-knob");
   const timeRow=document.getElementById("rem-time-row");
-  const note=document.getElementById("rem-note");
+  const statusEl=document.getElementById("rem-status");
+  const testRow=document.getElementById("rem-test-row");
   if(!toggle) return;
+
   if(state.reminderEnabled){
     toggle.style.background="#9060c0";
     knob.style.left="23px";
     timeRow.style.display="flex";
-    note.style.display="block";
+
+    // status zgody
+    if(statusEl){
+      statusEl.style.display="block";
+      const perm='Notification' in window ? Notification.permission : 'unsupported';
+      if(perm==='granted'){
+        statusEl.innerHTML='<div style="font-size:0.72rem;color:#3a8828;background:#f0f8ee;border-radius:8px;padding:8px 12px">✓ Powiadomienia dozwolone</div>';
+        if(testRow) testRow.style.display="block";
+      } else if(perm==='denied'){
+        statusEl.innerHTML='<div style="font-size:0.72rem;color:#b05060;background:#fdf0f0;border-radius:8px;padding:8px 12px">✗ Powiadomienia zablokowane — odblokuj je w ustawieniach przeglądarki dla tej strony</div>';
+        if(testRow) testRow.style.display="none";
+      } else {
+        statusEl.innerHTML='<div style="font-size:0.72rem;color:#a09080;background:#f8f5f0;border-radius:8px;padding:8px 12px">Kliknij „Zapisz zmiany" aby przyznać zgodę na powiadomienia</div>';
+        if(testRow) testRow.style.display="none";
+      }
+    }
   } else {
     toggle.style.background="#d8d0c8";
     knob.style.left="3px";
     timeRow.style.display="none";
-    note.style.display="none";
+    if(statusEl) statusEl.style.display="none";
+    if(testRow) testRow.style.display="none";
+  }
+}
+
+function testNotification(){
+  if(!('Notification' in window)||Notification.permission!=='granted') return;
+  try{
+    new Notification("💊 Magnez — Cycle Sync",{
+      body:"To jest testowe powiadomienie. Działa!",
+      icon:"./icon-192.png",
+      tag:"magnez-test"
+    });
+  }catch(e){
+    alert("Błąd powiadomienia: "+e.message);
   }
 }
 
@@ -1757,36 +1791,44 @@ function scheduleReminder(){
   const isMgDay=(state.phaseKey==="luteal"&&state.day>=mgStart)||(state.phaseKey==="menstrual"&&state.day<=2);
   if(!isMgDay) return;
 
-  Notification.requestPermission().then(perm=>{
-    if(perm!=='granted') return;
+  function doSchedule(){
+    if(Notification.permission!=='granted') return;
 
     const todayStr=todayKey();
     const firedKey="mg-notif-"+todayStr;
-    // nie wysyłaj dwa razy tego samego dnia
     try{ if(localStorage.getItem(firedKey)) return; }catch(e){}
 
-    const [h,m]=(state.reminderTime||"20:00").split(":").map(Number);
+    const [h,mn]=(state.reminderTime||"20:00").split(":").map(Number);
     const now=new Date();
-    const target=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m,0);
+    const target=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,mn,0);
     const delay=target-now;
 
     function fireNotification(){
       try{ localStorage.setItem(firedKey,"1"); }catch(e){}
-      new Notification("💊 Magnez — Cycle Sync",{
-        body:"Dzień "+state.day+" cyklu. Czas na magnez!",
-        icon:"./icon-192.png",
-        tag:"magnez-"+todayStr  // zapobiega duplikatom
-      });
+      try{
+        new Notification("💊 Magnez — Cycle Sync",{
+          body:"Dzień "+state.day+" cyklu. Czas na magnez!",
+          icon:"./icon-192.png",
+          tag:"magnez-"+todayStr
+        });
+      }catch(e){ console.warn("Notification error:",e); }
     }
 
     if(delay<=0){
-      // godzina już minęła — wyślij od razu
       fireNotification();
     } else {
-      // zaplanuj na właściwą godzinę
       setTimeout(fireNotification, delay);
     }
-  });
+  }
+
+  // jeśli zgoda już nadana — działaj od razu
+  if(Notification.permission==='granted'){
+    doSchedule();
+  } else if(Notification.permission==='default'){
+    // poproś o zgodę tylko jeśli jeszcze nie było decyzji
+    Notification.requestPermission().then(p=>{ if(p==='granted') doSchedule(); });
+  }
+  // jeśli 'denied' — nic nie rób
 }
 
 // ── KALENDARZ ──
@@ -1986,7 +2028,12 @@ function saveSettings(){
   state.reminderTime=document.getElementById("set-reminder-time").value||"20:00";
   saveState();
   closeSettings();
-  scheduleReminder();
+  // poproś o zgodę z gestu użytkownika (tap w Zapisz), potem zaplanuj
+  if(state.reminderEnabled&&'Notification' in window&&Notification.permission==='default'){
+    Notification.requestPermission().then(()=>scheduleReminder());
+  } else {
+    scheduleReminder();
+  }
   renderToday();
   renderNav();
   if(state.screen==="eat") renderEat();
