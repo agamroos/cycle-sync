@@ -516,6 +516,18 @@
     </div>
   </div>
 
+
+  <!-- ── POPUP MAGNEZ ── -->
+  <div id="mg-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:300;align-items:flex-end;justify-content:center">
+    <div style="background:#f8f5f0;border-radius:24px 24px 0 0;padding:32px 24px 44px;width:100%;max-width:390px;animation:slideUp 0.3s ease;text-align:center">
+      <div style="font-size:3rem;margin-bottom:12px">💊</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:1.3rem;color:#3a3020;margin-bottom:8px">Czas na magnez!</div>
+      <div id="mg-popup-txt" style="font-size:0.85rem;color:#7a6a58;line-height:1.6;margin-bottom:28px"></div>
+      <button onclick="mgPopupTake()" style="width:100%;padding:14px;border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:600;color:#fff;cursor:pointer;background:linear-gradient(135deg,#9060c0,#7040a0);margin-bottom:10px">Wzięłam! ✓</button>
+      <button onclick="mgPopupSnooze()" style="width:100%;padding:12px;border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:#a09080;cursor:pointer;background:none">Przypomnij przy następnym wejściu</button>
+    </div>
+  </div>
+
   <!-- ── USTAWIENIA ── -->
   <div id="settings-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeSettings()">
     <div style="background:#f8f5f0;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:390px;animation:slideUp 0.3s ease;overflow-y:auto;max-height:90vh">
@@ -915,6 +927,7 @@ function switchScreen(key){
   if(key==="phase") renderPhaseScreen();
   if(key==="history") renderHistory();
   if(key==="tracker") renderTracker();
+  if(key==="today") checkMgPopup();
 }
 
 // ── HISTORIA ──
@@ -1715,31 +1728,41 @@ function trackSet(field,val){
   renderTodayTracker(); // odśwież kartę na ekranie Dziś
 }
 
-// ── REMINDER ──
-function scheduleReminder(){
-  if(!('Notification' in window)) return;
-  if(!state.day||!state.phaseKey||!state.startDate) return;
-  if(Notification.permission!=='granted') return;
 
+// ── POPUP MAGNEZ ──
+function checkMgPopup(){
+  if(!state.day||!state.phaseKey||!state.startDate) return;
   const cl=state.cycleLen||28;
   const b=getPhaseBounds(cl);
   const mgStart=b.luteal[1]-7;
   const isMgDay=(state.phaseKey==="luteal"&&state.day>=mgStart)||(state.phaseKey==="menstrual"&&state.day<=2);
   if(!isMgDay) return;
 
-  const firedKey="mg-notif-"+todayKey();
-  try{ if(localStorage.getItem(firedKey)) return; }catch(e){}
+  // sprawdź czy dzisiejszy kafelek jest już oznaczony
+  const todayDayInCycle=state.day;
+  if(state.mgChecked[String(todayDayInCycle)]) return;
 
-  const opts={body:"Dzień "+state.day+" cyklu. Czas na magnez!",icon:"./icon-192.png",tag:"magnez-"+todayKey()};
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.ready.then(reg=>{
-      reg.showNotification("💊 Magnez — Cycle Sync",opts);
-      try{ localStorage.setItem(firedKey,"1"); }catch(e){}
-    });
-  } else {
-    try{ new Notification("💊 Magnez — Cycle Sync",opts); localStorage.setItem(firedKey,"1"); }catch(e){}
-  }
+  // pokaż popup
+  const txtEl=document.getElementById("mg-popup-txt");
+  if(txtEl) txtEl.textContent="Dzień "+state.day+" cyklu. Magnez wspiera Cię w tej fazie — pamiętaj o suplementacji!";
+  const popup=document.getElementById("mg-popup");
+  if(popup) popup.style.display="flex";
 }
+
+function mgPopupTake(){
+  // oznacz dzisiejszy kafelek i zamknij
+  const cd=state.day;
+  state.mgChecked[String(cd)]=true;
+  saveState();
+  renderMg();
+  document.getElementById("mg-popup").style.display="none";
+}
+
+function mgPopupSnooze(){
+  // tylko zamknij — pojawi się znowu przy następnym wejściu
+  document.getElementById("mg-popup").style.display="none";
+}
+
 
 // ── KALENDARZ ──
 let calYear=new Date().getFullYear();
@@ -1935,12 +1958,6 @@ function saveSettings(){
   }
   saveState();
   closeSettings();
-  // poproś o zgodę przy pierwszym zapisie (gest użytkownika)
-  if('Notification' in window && Notification.permission==='default'){
-    Notification.requestPermission().then(()=>scheduleReminder());
-  } else {
-    scheduleReminder();
-  }
   renderToday();
   renderNav();
   if(state.screen==="eat") renderEat();
@@ -2059,13 +2076,13 @@ if(saved&&saved.startDate){
   document.getElementById("ob-name").value=state.name;
   document.getElementById("ob-cycle-val").textContent=state.cycleLen;
   recalcDay(saved.startDate);
-  scheduleReminder();
   // skip onboarding
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById("screen-today").classList.add("active");
   state.screen="today";
   renderToday();
   renderNav();
+  checkMgPopup();
 } else {
   // show onboarding
   renderNav();
