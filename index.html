@@ -1245,11 +1245,26 @@ function renderMg(){
 
   if(isPreDay){document.getElementById("mg-tiles").innerHTML="";return;}
 
+  // W fazie menstrualnej kafelki dotyczą poprzedniego cyklu
+  // więc startujemy od daty poprzedniej miesiączki
+  let tileStart=cycleStart;
+  let tileMgStartDay=mgStartDay;
+  let tileLutEnd=lutEnd;
+  if(isMenstrualCont && state.cycleHistory.length>0){
+    const prev=state.cycleHistory[0];
+    const pp=prev.startDate.split("-");
+    tileStart=new Date(parseInt(pp[0]),parseInt(pp[1])-1,parseInt(pp[2]));
+    const prevCl=prev.cycleLen||state.cycleLen||28;
+    const pb=getPhaseBounds(prevCl);
+    tileMgStartDay=pb.luteal[1]-7;
+    tileLutEnd=pb.luteal[1];
+  }
+
   let html="";
   for(let i=0;i<10;i++){
-    const cd=mgStartDay+i;
-    if(cd>lutEnd+2) break;
-    const dt=new Date(cycleStart);
+    const cd=tileMgStartDay+i;
+    if(cd>tileLutEnd+2) break;
+    const dt=new Date(tileStart);
     dt.setDate(dt.getDate()+cd-1);
     const isToday=dt.toDateString()===todayDate.toDateString();
     const isPast=dt<todayDate;
@@ -1967,27 +1982,12 @@ function saveSettings(){
   document.getElementById("set-date").style.borderColor="";
 
   state.name=newName;
+  state.cycleLen=setLen;
   if(newDate && newDate!==state.startDate){
     archiveCurrent(newDate);
-    // wylicz długość bieżącego cyklu z różnicy dat
-    const prevDate=state.startDate;
     state.startDate=newDate;
     setDateInput(newDate);
-    if(prevDate){
-      const ps=prevDate.split("-");
-      const ns=newDate.split("-");
-      const prev=new Date(parseInt(ps[0]),parseInt(ps[1])-1,parseInt(ps[2]));
-      const next=new Date(parseInt(ns[0]),parseInt(ns[1])-1,parseInt(ns[2]));
-      const diff=Math.round((next-prev)/86400000);
-      if(diff>0&&diff<=60) state.cycleLen=diff;
-      else state.cycleLen=setLen; // fallback na slider
-    } else {
-      state.cycleLen=setLen; // pierwszy cykl — użyj slidera
-    }
     recalcDay(newDate);
-  } else {
-    // data się nie zmieniła — użyj slidera
-    state.cycleLen=setLen;
   }
   saveState();
   closeSettings();
@@ -2073,19 +2073,9 @@ function confirmDatePicker(){
   const today=new Date(); today.setHours(0,0,0,0);
   if(d>today) return;
   closeDatePicker();
-  const prevDate=state.startDate;
   archiveCurrent(v);
   state.startDate=v;
   setDateInput(v);
-  // wylicz długość cyklu z różnicy dat
-  if(prevDate && prevDate!==v){
-    const ps=prevDate.split("-");
-    const ns=v.split("-");
-    const prev=new Date(parseInt(ps[0]),parseInt(ps[1])-1,parseInt(ps[2]));
-    const next=new Date(parseInt(ns[0]),parseInt(ns[1])-1,parseInt(ns[2]));
-    const diff=Math.round((next-prev)/86400000);
-    if(diff>0&&diff<=60) state.cycleLen=diff;
-  }
   recalcDay(v);
   saveState();
   renderToday();
@@ -2106,7 +2096,7 @@ if(saved&&saved.startDate){
   state.mgChecked=saved.mgChecked||{};
   state.eatChecked=saved.eatChecked||{};
   state.name=saved.name||"";
-  state.cycleLen=saved.cycleLen||28;
+  state.cycleLen=28;
   state.cycleHistory=saved.cycleHistory||[];
   state.trackEntries=saved.trackEntries||{};
   cycleLen=state.cycleLen;
