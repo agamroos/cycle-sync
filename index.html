@@ -927,7 +927,6 @@ function switchScreen(key){
   if(key==="phase") renderPhaseScreen();
   if(key==="history") renderHistory();
   if(key==="tracker") renderTracker();
-  if(key==="today") checkMgPopup();
 }
 
 // ── HISTORIA ──
@@ -1946,7 +1945,8 @@ function saveSettings(){
   if(!newName) errors.push("Podaj swoje imię.");
   if(!newDate) errors.push("Wybierz datę pierwszego dnia ostatniej miesiączki.");
   if(newDate){
-    const d=new Date(newDate);
+    const parts=newDate.split("-");
+    const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
     const today=new Date(); today.setHours(0,0,0,0);
     if(d>today) errors.push("Data miesiączki nie może być w przyszłości.");
     const maxPast=new Date(); maxPast.setFullYear(maxPast.getFullYear()-1);
@@ -2068,9 +2068,9 @@ function closeDatePicker(){
 function confirmDatePicker(){
   const v=document.getElementById("dateInput").value;
   if(!v) return;
-  const errEl=document.getElementById("dp-error");
+  const parts=v.split("-");
+  const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
   const today=new Date(); today.setHours(0,0,0,0);
-  const d=new Date(v);
   if(d>today) return;
   closeDatePicker();
   const prevDate=state.startDate;
