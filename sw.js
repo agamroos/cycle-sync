@@ -1,4 +1,4 @@
-const CACHE = 'cycle-sync-v22';
+const CACHE = 'cycle-sync-v27';
 const FILES = [
   './',
   './index.html',

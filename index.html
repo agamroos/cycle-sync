@@ -1217,73 +1217,38 @@ function renderTodayTracker(){
 
 // ── MAGNEZ ──
 function renderMg(){
-  const {day,phaseKey,startDate,mgChecked,cycleLen}=state;
-  const cl=cycleLen||28;
-  const b=getPhaseBounds(cl);
-  const lutStart=b.luteal[0];
-  const lutEnd=b.luteal[1];
-  const mgStartDay=lutEnd-7; // ostatnie 8 dni lutealnej + 2 menstrualne = 10 dni magnezu
-  const mgPreDay=mgStartDay-1; // dzień "jutro zaczynasz"
+  const {startDate,mgChecked}=state;
+  if(!startDate) return;
 
-  const isMenstrualCont=phaseKey==="menstrual"&&day<=b.menstrual[1]&&day<=2;
-  const isPreDay=day===mgPreDay&&phaseKey==="luteal";
-  const showMg=(phaseKey==="luteal"||(phaseKey==="menstrual"&&day<=2))&&day;
-  const activeSuppl=(phaseKey==="luteal"&&day>=mgStartDay)||isMenstrualCont;
-
-  document.getElementById("mg-section").style.display=showMg?"block":"none";
-  if(!showMg||!startDate) return;
-
-  const parts=startDate.split("-");
-  const cycleStart=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
   const todayDate=new Date(); todayDate.setHours(0,0,0,0);
+  const p=startDate.split("-");
+  const cs=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  const mgS=new Date(cs); mgS.setDate(mgS.getDate()+19); // startDate + 19 = dzień 20
+  const mgE=new Date(cs); mgE.setDate(mgE.getDate()+28); // startDate + 28 = dzień 29
 
-  document.getElementById("mg-sub-txt").textContent=
-    isMenstrualCont?"Zaznaczaj dni, które masz za sobą"
-    :isPreDay?"Jutro rozpoczynasz suplementację magnezu!"
-    :(phaseKey==="luteal"&&day<mgStartDay)?"Suplementacja zaczyna się za "+(mgStartDay-day)+" dni"
-    :"Zaznaczaj dni, które masz za sobą";
+  document.getElementById("mg-section").style.display=(todayDate>=mgS&&todayDate<=mgE)?"block":"none";
+  if(todayDate<mgS||todayDate>mgE) return;
 
-  if(isPreDay){document.getElementById("mg-tiles").innerHTML="";return;}
-
-  // W fazie menstrualnej kafelki dotyczą poprzedniego cyklu
-  // więc startujemy od daty poprzedniej miesiączki
-  let tileStart=cycleStart;
-  let tileMgStartDay=mgStartDay;
-  let tileLutEnd=lutEnd;
-  if(isMenstrualCont && state.cycleHistory.length>0){
-    const prev=state.cycleHistory[0];
-    const pp=prev.startDate.split("-");
-    tileStart=new Date(parseInt(pp[0]),parseInt(pp[1])-1,parseInt(pp[2]));
-    const prevCl=prev.cycleLen||state.cycleLen||28;
-    const pb=getPhaseBounds(prevCl);
-    tileMgStartDay=pb.luteal[1]-7;
-    tileLutEnd=pb.luteal[1];
-  }
+  document.getElementById("mg-sub-txt").textContent="Zaznaczaj dni, które masz za sobą";
 
   let html="";
   for(let i=0;i<10;i++){
-    const cd=tileMgStartDay+i;
-    if(cd>tileLutEnd+2) break;
-    const dt=new Date(tileStart);
-    dt.setDate(dt.getDate()+cd-1);
+    const dt=new Date(cs); dt.setDate(dt.getDate()+19+i);
+    const dateKey=dt.toISOString().split("T")[0];
     const isToday=dt.toDateString()===todayDate.toDateString();
     const isPast=dt<todayDate;
-    const isDone=!!mgChecked[String(cd)];
-    if(!activeSuppl){
-      html+='<div class="mg-tile mg-tile-off"><span>'+dt.getDate()+'</span><span style="font-size:0.5rem">'+MONTHS[dt.getMonth()]+'</span></div>';
-    } else {
-      const bg=isDone?"#7a5090":isPast||isMenstrualCont?"#ddd0ee":isToday?"#c4a0dc":"#f0eaf8";
-      const col=isDone?"#fff":"#7a5090";
-      const brd=isToday?"1.5px solid #7a5090":"1.5px solid transparent";
-      html+='<div class="mg-tile" data-mgday="'+cd+'" style="background:'+bg+';color:'+col+';border:'+brd+'">'+
-        (isDone?'<span style="font-size:1rem">✓</span>':'<span>'+dt.getDate()+'</span><span style="font-size:0.5rem">'+MONTHS[dt.getMonth()]+'</span>')+
-      '</div>';
-    }
+    const isDone=!!mgChecked[dateKey];
+    const bg=isDone?"#7a5090":isPast?"#ddd0ee":isToday?"#c4a0dc":"#f0eaf8";
+    const col=isDone?"#fff":"#7a5090";
+    const brd=isToday?"1.5px solid #7a5090":"1.5px solid transparent";
+    html+='<div class="mg-tile" data-mgday="'+dateKey+'" style="background:'+bg+';color:'+col+';border:'+brd+'">'+
+      (isDone?'<span style="font-size:1rem">✓</span>':'<span>'+dt.getDate()+'</span><span style="font-size:0.5rem">'+MONTHS[dt.getMonth()]+'</span>')+
+    '</div>';
   }
   document.getElementById("mg-tiles").innerHTML=html;
 }
 
-function toggleMg(cd){state.mgChecked[String(cd)]=!state.mgChecked[String(cd)];saveState();renderMg()}
+function toggleMg(key){state.mgChecked[key]=!state.mgChecked[key];saveState();renderMg()}
 function toggleEatTag(key){state.eatChecked[key]=!state.eatChecked[key];saveState();renderEat()}
 document.addEventListener("click",e=>{
   const t=e.target.closest("[data-mgday]");
@@ -1763,18 +1728,15 @@ function trackSet(field,val){
 
 // ── POPUP MAGNEZ ──
 function checkMgPopup(){
-  if(!state.day||!state.phaseKey||!state.startDate) return;
-  const cl=state.cycleLen||28;
-  const b=getPhaseBounds(cl);
-  const mgStart=b.luteal[1]-7;
-  const isMgDay=(state.phaseKey==="luteal"&&state.day>=mgStart)||(state.phaseKey==="menstrual"&&state.day<=2);
-  if(!isMgDay) return;
-
-  // sprawdź czy dzisiejszy kafelek jest już oznaczony
-  const todayDayInCycle=state.day;
-  if(state.mgChecked[String(todayDayInCycle)]) return;
-
-  // pokaż popup
+  if(!state.startDate) return;
+  const todayDate=new Date(); todayDate.setHours(0,0,0,0);
+  const p=state.startDate.split("-");
+  const cs=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  const mgS=new Date(cs); mgS.setDate(mgS.getDate()+19);
+  const mgE=new Date(cs); mgE.setDate(mgE.getDate()+28);
+  if(todayDate<mgS||todayDate>mgE) return;
+  const todayKey=todayDate.toISOString().split("T")[0];
+  if(state.mgChecked[todayKey]) return;
   const txtEl=document.getElementById("mg-popup-txt");
   if(txtEl) txtEl.textContent="Dzień "+state.day+" cyklu. Magnez wspiera Cię w tej fazie — pamiętaj o suplementacji!";
   const popup=document.getElementById("mg-popup");
@@ -1782,9 +1744,8 @@ function checkMgPopup(){
 }
 
 function mgPopupTake(){
-  // oznacz dzisiejszy kafelek i zamknij
-  const cd=state.day;
-  state.mgChecked[String(cd)]=true;
+  const todayKey=new Date().toISOString().split("T")[0];
+  state.mgChecked[todayKey]=true;
   saveState();
   renderMg();
   document.getElementById("mg-popup").style.display="none";
