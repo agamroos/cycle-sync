@@ -1221,19 +1221,28 @@ function renderMg(){
   if(!startDate) return;
 
   const todayDate=new Date(); todayDate.setHours(0,0,0,0);
-  const p=startDate.split("-");
-  const cs=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
-  const mgS=new Date(cs); mgS.setDate(mgS.getDate()+19); // startDate + 19 = dzień 20
-  const mgE=new Date(cs); mgE.setDate(mgE.getDate()+28); // startDate + 28 = dzień 29
 
-  document.getElementById("mg-section").style.display=(todayDate>=mgS&&todayDate<=mgE)?"block":"none";
-  if(todayDate<mgS||todayDate>mgE) return;
+  // sprawdź bieżący cykl i ostatni w historii
+  const toCheck=[startDate];
+  if(state.cycleHistory.length>0) toCheck.push(state.cycleHistory[0].startDate);
+
+  let activeCs=null;
+  for(const sd of toCheck){
+    const p=sd.split("-");
+    const cs=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+    const mgS=new Date(cs); mgS.setDate(mgS.getDate()+19);
+    const mgE=new Date(cs); mgE.setDate(mgE.getDate()+28);
+    if(todayDate>=mgS&&todayDate<=mgE){ activeCs=cs; break; }
+  }
+
+  document.getElementById("mg-section").style.display=activeCs?"block":"none";
+  if(!activeCs) return;
 
   document.getElementById("mg-sub-txt").textContent="Zaznaczaj dni, które masz za sobą";
 
   let html="";
   for(let i=0;i<10;i++){
-    const dt=new Date(cs); dt.setDate(dt.getDate()+19+i);
+    const dt=new Date(activeCs); dt.setDate(dt.getDate()+19+i);
     const dateKey=dt.toISOString().split("T")[0];
     const isToday=dt.toDateString()===todayDate.toDateString();
     const isPast=dt<todayDate;
@@ -1730,11 +1739,17 @@ function trackSet(field,val){
 function checkMgPopup(){
   if(!state.startDate) return;
   const todayDate=new Date(); todayDate.setHours(0,0,0,0);
-  const p=state.startDate.split("-");
-  const cs=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
-  const mgS=new Date(cs); mgS.setDate(mgS.getDate()+19);
-  const mgE=new Date(cs); mgE.setDate(mgE.getDate()+28);
-  if(todayDate<mgS||todayDate>mgE) return;
+  const toCheck=[state.startDate];
+  if(state.cycleHistory.length>0) toCheck.push(state.cycleHistory[0].startDate);
+  let isMgToday=false;
+  for(const sd of toCheck){
+    const p=sd.split("-");
+    const cs=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+    const mgS=new Date(cs); mgS.setDate(mgS.getDate()+19);
+    const mgE=new Date(cs); mgE.setDate(mgE.getDate()+28);
+    if(todayDate>=mgS&&todayDate<=mgE){ isMgToday=true; break; }
+  }
+  if(!isMgToday) return;
   const todayKey=todayDate.toISOString().split("T")[0];
   if(state.mgChecked[todayKey]) return;
   const txtEl=document.getElementById("mg-popup-txt");
